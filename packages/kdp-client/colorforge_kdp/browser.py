@@ -14,7 +14,7 @@ from playwright.async_api import (
     Playwright,
     async_playwright,
 )
-from playwright_stealth import stealth_async  # type: ignore[import-untyped]
+from playwright_stealth import Stealth  # type: ignore[import-untyped]
 
 from colorforge_kdp.exceptions import LoginRequired, StorageStateError
 from colorforge_kdp.storage import decrypt_storage_state
@@ -98,7 +98,7 @@ class AccountBrowserManager:
         )
 
         page = await self._context.new_page()
-        await stealth_async(page)
+        await Stealth().apply_stealth_async(page)
 
         logger.info("account={} browser context ready", self._account.label)
         return self._context, page
