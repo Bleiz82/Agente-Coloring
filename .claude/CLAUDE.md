@@ -49,12 +49,16 @@ ruff + mypy strict | biome | pytest + vitest | conventional commits
 8. No mocks left in production code paths. Tests use mocks; src must not.
 
 ## Current Milestone
-M1 — Foundation & Schema. Goal: monorepo + infra + DB schema + seed + first tests.
+M2 — KDP Client + Multi-Account Manager. Status: Complete.
+Next: M3 — Niche Hunter + Deep Scout.
 
 ## Open Decisions (architect log here)
 [2026-04-29] Stack locked per SPEC.md section 4.
 [2026-04-29] Prisma chosen as ORM with prisma-client-py for Python interop.
 [2026-04-29] Single repo, pnpm + uv workspaces. No turborepo until M7.
+[2026-05-04] playwright-stealth v2.x API: use Stealth().apply_stealth_async(page) — stealth_async removed in v2.
+[2026-05-04] age CLI binary (subprocess) used for storageState encryption, not pure-Python age.
+[2026-05-04] Worker uses RQ (not Celery) per SPEC.md §4. Systemd timer handles scheduling.
 
 ## How to Start a Task
 1. If task is in MILESTONE_M*_PLAN.md, read its acceptance criteria
