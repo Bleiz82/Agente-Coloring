@@ -1,0 +1,372 @@
+// ColorForge AI — Database Schema
+// Prisma 5+, Postgres 16
+// Generates clients for both TypeScript and Python (via prisma-client-py)
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =================================================================
+// Reference / configuration entities
+// =================================================================
+
+model Account {
+  id                  String   @id @default(uuid()) @db.Uuid
+  label               String   @unique
+  brandAuthors        String[]
+  nicheSpecialization String[]
+  storageStatePath    String
+  proxyEndpointId     String
+  fingerprint         Json
+  countryCode         String   @db.Char(2)
+  createdAt           DateTime @default(now())
+  warmingStartedAt    DateTime @default(now())
+  dailyQuota          Int      @default(5)
+  active              Boolean  @default(true)
+
+  books      Book[]
+  salesDaily SalesDaily[]
+  agentRuns  AgentRun[]
+  alerts     Alert[]
+
+  @@map("accounts")
+}
+
+// =================================================================
+// Niche research domain
+// =================================================================
+
+model Niche {
+  id                 String   @id @default(uuid()) @db.Uuid
+  categoryPath       String[]
+  primaryKeyword     String
+  scanDate           DateTime @default(now())
+  rawObservations    Json
+  signals            Json
+  profitabilityScore Float
+  scanRunId          String   @db.Uuid
+
+  brief   NicheBrief?
+  books   Book[]
+  reviews ReviewScraped[]
+
+  @@index([scanDate])
+  @@index([profitabilityScore(sort: Desc)])
+  @@index([categoryPath], type: Gin)
+  @@map("niches")
+}
+
+model NicheBrief {
+  id             String   @id @default(uuid()) @db.Uuid
+  nicheId        String   @unique @db.Uuid
+  niche          Niche    @relation(fields: [nicheId], references: [id], onDelete: Cascade)
+  painPoints     Json
+  styleClassif   Json
+  differentiators Json
+  visionSummary  String   @db.Text
+  qdrantVectorId String?
+  createdAt      DateTime @default(now())
+  createdByRunId String   @db.Uuid
+
+  @@map("niche_briefs")
+}
+
+model ReviewScraped {
+  id         String   @id @default(uuid()) @db.Uuid
+  nicheId    String   @db.Uuid
+  niche      Niche    @relation(fields: [nicheId], references: [id], onDelete: Cascade)
+  asin       String
+  reviewHash String
+  rating     Int
+  text       String   @db.Text
+  scrapedAt  DateTime @default(now())
+
+  @@unique([reviewHash])
+  @@index([nicheId])
+  @@index([asin])
+  @@map("reviews_scraped")
+}
+
+// =================================================================
+// Book lifecycle domain (the main entity)
+// =================================================================
+
+enum BookState {
+  PLANNED
+  GENERATING
+  VALIDATING
+  LISTING
+  PUBLISHING
+  LIVE
+  KILLED
+  PAUSED
+}
+
+model Book {
+  id                String    @id @default(uuid()) @db.Uuid
+  accountId         String    @db.Uuid
+  account           Account   @relation(fields: [accountId], references: [id])
+  nicheId           String    @db.Uuid
+  niche             Niche     @relation(fields: [nicheId], references: [id])
+  state             BookState @default(PLANNED)
+  plan              Json
+  manuscriptPdfPath String?
+  coverPdfPath      String?
+  asin              String?   @unique
+  spineWidthInches  Float?
+  pageCount         Int?
+  styleFingerprint  String
+  brandAuthor       String
+  createdAt         DateTime  @default(now())
+  publishedAt       DateTime?
+  killedAt          DateTime?
+  killedReason      String?
+
+  pages       Page[]
+  listings    Listing[]
+  validations Validation[]
+  salesDaily  SalesDaily[]
+  events      BookEvent[]
+  alerts      Alert[]
+
+  @@index([accountId, state])
+  @@index([nicheId])
+  @@index([state, createdAt])
+  @@map("books")
+}
+
+model BookEvent {
+  id        String     @id @default(uuid()) @db.Uuid
+  bookId    String     @db.Uuid
+  book      Book       @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  fromState BookState?
+  toState   BookState
+  reason    String?
+  payload   Json?
+  createdAt DateTime   @default(now())
+
+  @@index([bookId, createdAt])
+  @@map("book_events")
+}
+
+model Page {
+  id              String   @id @default(uuid()) @db.Uuid
+  bookId          String   @db.Uuid
+  book            Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  index           Int
+  prompt          String   @db.Text
+  imagePath       String?
+  imageHash       String?
+  detailTier      String
+  validationFlags Json
+  regenCount      Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  @@unique([bookId, index])
+  @@index([bookId])
+  @@map("pages")
+}
+
+model Listing {
+  id              String   @id @default(uuid()) @db.Uuid
+  bookId          String   @db.Uuid
+  book            Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  version         Int      @default(1)
+  title           String
+  subtitle        String?
+  keywords        String[]
+  descriptionHtml String   @db.Text
+  bisacCodes      String[]
+  priceUsd        Decimal  @db.Decimal(10, 2)
+  priceEur        Decimal? @db.Decimal(10, 2)
+  priceGbp        Decimal? @db.Decimal(10, 2)
+  aiDisclosure    Boolean  @default(true)
+  current         Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  createdByRunId  String   @db.Uuid
+
+  @@unique([bookId, version])
+  @@index([bookId, current])
+  @@map("listings")
+}
+
+model Validation {
+  id                 String   @id @default(uuid()) @db.Uuid
+  bookId             String   @db.Uuid
+  book               Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  verdict            String
+  perPageFlags       Json
+  coverAssessment    Json
+  pdfSpecCompliance  Boolean
+  pdfSpecDetails     Json
+  recommendedAction  String
+  criticModelVersion String
+  createdAt          DateTime @default(now())
+  createdByRunId     String   @db.Uuid
+
+  @@index([bookId, createdAt])
+  @@map("validations")
+}
+
+// =================================================================
+// Performance / flywheel domain
+// =================================================================
+
+model SalesDaily {
+  id          String   @id @default(uuid()) @db.Uuid
+  bookId      String   @db.Uuid
+  book        Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  accountId   String   @db.Uuid
+  account     Account  @relation(fields: [accountId], references: [id])
+  date        DateTime @db.Date
+  unitsSold   Int      @default(0)
+  royalty     Decimal  @db.Decimal(10, 4)
+  kenpRead    Int      @default(0)
+  refunds     Int      @default(0)
+  marketplace String   @default("US")
+  scrapedAt   DateTime @default(now())
+
+  @@unique([bookId, date, marketplace])
+  @@index([accountId, date])
+  @@index([date])
+  @@map("sales_daily")
+}
+
+model RoyaltySnapshot {
+  id           String   @id @default(uuid()) @db.Uuid
+  yearMonth    String
+  accountId    String   @db.Uuid
+  totalRoyalty Decimal  @db.Decimal(12, 2)
+  totalUnits   Int
+  bookCount    Int
+  hitRate      Float
+  createdAt    DateTime @default(now())
+
+  @@unique([yearMonth, accountId])
+  @@map("royalty_snapshots")
+}
+
+// =================================================================
+// Learning / policy domain
+// =================================================================
+
+enum PolicyStatus {
+  PROPOSED
+  APPROVED
+  RETIRED
+  REJECTED
+}
+
+model Policy {
+  id                    String       @id @default(uuid()) @db.Uuid
+  ruleText              String       @db.Text
+  ruleMachineReadable   Json
+  appliesTo             String[]
+  originatingExperiment String?      @db.Uuid
+  confidenceScore       Float
+  supportingEvidence    String[]
+  status                PolicyStatus @default(PROPOSED)
+  version               Int          @default(1)
+  proposedAt            DateTime     @default(now())
+  approvedAt            DateTime?
+  retiredAt             DateTime?
+
+  @@index([status])
+  @@index([appliesTo], type: Gin)
+  @@map("policies")
+}
+
+model PromptHistory {
+  id        String   @id @default(uuid()) @db.Uuid
+  agentName String
+  promptKey String
+  version   Int
+  template  String   @db.Text
+  policyId  String?  @db.Uuid
+  createdAt DateTime @default(now())
+  createdBy String
+
+  @@unique([agentName, promptKey, version])
+  @@index([agentName, promptKey])
+  @@map("prompts_history")
+}
+
+model Experiment {
+  id            String    @id @default(uuid()) @db.Uuid
+  name          String
+  hypothesis    String    @db.Text
+  variants      Json
+  bookIds       String[]
+  successMetric String
+  startedAt     DateTime  @default(now())
+  endedAt       DateTime?
+  conclusion    Json?
+
+  @@index([startedAt])
+  @@map("experiments")
+}
+
+// =================================================================
+// Operations domain
+// =================================================================
+
+model AgentRun {
+  id          String    @id @default(uuid()) @db.Uuid
+  agentName   String
+  accountId   String?   @db.Uuid
+  account     Account?  @relation(fields: [accountId], references: [id])
+  inputHash   String
+  outputHash  String?
+  status      String
+  startedAt   DateTime  @default(now())
+  endedAt     DateTime?
+  durationMs  Int?
+  tokensUsed  Int?
+  costUsd     Decimal?  @db.Decimal(10, 4)
+  errorDetail Json?
+
+  @@index([agentName, startedAt])
+  @@index([status])
+  @@map("agents_runs")
+}
+
+model Job {
+  id          String    @id @default(uuid()) @db.Uuid
+  queue       String
+  payload     Json
+  status      String
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(3)
+  createdAt   DateTime  @default(now())
+  startedAt   DateTime?
+  finishedAt  DateTime?
+
+  @@index([queue, status])
+  @@map("jobs")
+}
+
+model Alert {
+  id           String    @id @default(uuid()) @db.Uuid
+  severity     String
+  source       String
+  bookId       String?   @db.Uuid
+  book         Book?     @relation(fields: [bookId], references: [id])
+  accountId    String?   @db.Uuid
+  account      Account?  @relation(fields: [accountId], references: [id])
+  title        String
+  message      String    @db.Text
+  payload      Json?
+  acknowledged Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  ackedAt      DateTime?
+
+  @@index([acknowledged, severity])
+  @@index([createdAt])
+  @@map("alerts")
+}

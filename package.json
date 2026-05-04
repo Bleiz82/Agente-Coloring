@@ -1,0 +1,35 @@
+{
+  "name": "colorforge",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20.10.0"
+  },
+  "scripts": {
+    "db:generate": "pnpm --filter @colorforge/db prisma generate",
+    "db:migrate": "pnpm --filter @colorforge/db prisma migrate dev",
+    "db:push": "pnpm --filter @colorforge/db prisma db push",
+    "db:seed": "pnpm --filter @colorforge/db tsx seed.ts",
+    "db:studio": "pnpm --filter @colorforge/db prisma studio",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "typecheck": "tsc -b",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "py:lint": "cd apps/agents && uv run ruff check . && uv run ruff format --check .",
+    "py:typecheck": "echo 'Python typecheck placeholder - mypy configured in M3+'",
+    "py:test": "echo 'Python tests placeholder - pytest configured in M3+'",
+    "check": "pnpm lint && pnpm typecheck && pnpm test",
+    "infra:up": "docker compose -f infra/docker-compose.yml up -d",
+    "infra:down": "docker compose -f infra/docker-compose.yml down",
+    "infra:logs": "docker compose -f infra/docker-compose.yml logs -f"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4",
+    "@types/node": "^25.6.0",
+    "tsx": "^4.19.0",
+    "typescript": "5.5.4",
+    "vitest": "^2.1.0"
+  }
+}

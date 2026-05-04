@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+.venv/
+__pycache__/
+*.egg-info/
+dist/
+build/
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+*.encrypted
+!.env.example
+
+# State (NEVER commit)
+state/
+storageState*.json
+.colorforge/
+
+# Generated assets
+/var/colorforge/
+assets/
+*.pdf
+!docs/**/*.pdf
+
+# Prisma
+packages/db/migrations/dev*
+apps/agents/colorforge_db/
+
+# Build outputs
+.next/
+.turbo/
+*.tsbuildinfo
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Logs
+*.log
+logs/

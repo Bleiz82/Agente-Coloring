@@ -1,0 +1,12 @@
+[project]
+name = "colorforge-kdp-client"
+version = "0.1.0"
+description = "ColorForge AI KDP automation client"
+requires-python = ">=3.12"
+dependencies = [
+    "loguru>=0.7.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

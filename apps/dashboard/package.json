@@ -1,0 +1,9 @@
+{
+  "name": "@colorforge/dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "echo 'Dashboard scaffolded in M7'",
+    "build": "echo 'Dashboard scaffolded in M7'"
+  }
+}
