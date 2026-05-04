@@ -1,12 +1,44 @@
 [project]
 name = "colorforge-worker"
 version = "0.1.0"
-description = "ColorForge AI worker process — browser automation"
+description = "ColorForge AI worker process -- browser automation jobs via RQ"
 requires-python = ">=3.12"
 dependencies = [
+    "rq>=1.16.0",
+    "redis>=5.0.0",
+    "aiohttp>=3.9.0",
     "loguru>=0.7.0",
+    "pydantic>=2.0.0",
+    "colorforge-kdp-client",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "mypy>=1.10.0",
+    "ruff>=0.4.0",
 ]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+
+[[tool.mypy.overrides]]
+module = ["redis", "redis.*", "rq", "rq.*", "aiohttp", "aiohttp.*", "prisma", "prisma.*", "colorforge_kdp", "colorforge_kdp.*"]
+ignore_missing_imports = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
