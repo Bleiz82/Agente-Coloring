@@ -48,7 +48,12 @@ BOOK_PLAN_EXAMPLE = BookPlan(
     page_prompts=[
         PagePrompt(
             index=0,
-            prompt="Black and white coloring book line art for adults. Subject: intricate ocean wave mandala with seashells and coral. Style: clean bold outlines, uniform line weight, NO shading, NO gradients. Background: pure white. Composition: centered, fills 80% of frame. Detail level: dense.",
+            prompt=(
+                "Black and white coloring book line art for adults. Subject: intricate ocean"
+                " wave mandala with seashells and coral. Style: clean bold outlines, uniform"
+                " line weight, NO shading, NO gradients. Background: pure white."
+                " Composition: centered, fills 80% of frame. Detail level: dense."
+            ),
             complexity_tier="dense",
             theme="ocean-wave-mandala",
         ),

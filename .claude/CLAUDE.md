@@ -49,8 +49,8 @@ ruff + mypy strict | biome | pytest + vitest | conventional commits
 8. No mocks left in production code paths. Tests use mocks; src must not.
 
 ## Current Milestone
-M2 — KDP Client + Multi-Account Manager. Status: Complete.
-Next: M3 — Niche Hunter + Deep Scout.
+M3 — Niche Hunter + Deep Scout. Status: Complete.
+Next: M4 — Generator + Critic.
 
 ## Open Decisions (architect log here)
 [2026-04-29] Stack locked per SPEC.md section 4.

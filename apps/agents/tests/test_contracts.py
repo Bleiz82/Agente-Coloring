@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import json
 
+import pytest
+from pydantic import ValidationError
+
 from colorforge_agents.contracts.book_draft import BOOK_DRAFT_EXAMPLE, BookDraft
 from colorforge_agents.contracts.book_plan import BOOK_PLAN_EXAMPLE, BookPlan
 from colorforge_agents.contracts.listing import LISTING_EXAMPLE, ListingContract
@@ -54,11 +57,9 @@ def test_book_plan_round_trip() -> None:
 
 
 def test_book_plan_page_count_validation() -> None:
-    import pytest
-
     data = BOOK_PLAN_EXAMPLE.model_dump()
     data["page_count"] = 5  # below minimum 20
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         BookPlan.model_validate(data)
 
 
@@ -71,11 +72,9 @@ def test_validation_report_round_trip() -> None:
 
 
 def test_validation_report_invalid_verdict() -> None:
-    import pytest
-
     data = VALIDATION_REPORT_EXAMPLE.model_dump()
     data["verdict"] = "maybe"
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         ValidationReport.model_validate(data)
 
 
@@ -96,11 +95,9 @@ def test_success_score_round_trip() -> None:
 
 
 def test_success_score_valid_windows() -> None:
-    import pytest
-
     data = SUCCESS_SCORE_EXAMPLE.model_dump()
     data["window_days"] = 15
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         SuccessScore.model_validate(data)
 
 

@@ -37,7 +37,10 @@ LISTING_EXAMPLE = ListingContract(
         "ocean wave patterns coloring",
         "gift coloring book teens adults",
     ],
-    description_html="<b>Dive Into Calm with 75 Stunning Ocean Mandalas</b><br><br>Each page features a unique design.",
+    description_html=(
+        "<b>Dive Into Calm with 75 Stunning Ocean Mandalas</b>"
+        "<br><br>Each page features a unique design."
+    ),
     bisac_codes=["ART015000", "CRA019000"],
     price_usd=7.99,
     price_eur=7.49,
