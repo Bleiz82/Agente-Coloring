@@ -1,0 +1,58 @@
+"""Domain exceptions for the colorforge-agents package."""
+from __future__ import annotations
+
+
+class ColorforgeAgentsError(Exception):
+    """Base exception for all agent errors."""
+
+
+class ScoringError(ColorforgeAgentsError):
+    """Error in Profitability Score computation."""
+
+
+class TrendsUnavailable(ColorforgeAgentsError):
+    """Trends API unavailable — caller should use fallback 0.0."""
+
+
+class LLMAnalysisError(ColorforgeAgentsError):
+    """Claude API call failed for pain point or style extraction."""
+
+
+class EmbeddingError(ColorforgeAgentsError):
+    """Qdrant embedding or upsert failed."""
+
+
+class NicheGateBlocked(ColorforgeAgentsError):
+    """Niche brief blocked by Niche Gate."""
+    def __init__(self, niche_id: str, score: float, threshold: float) -> None:
+        self.niche_id = niche_id
+        self.score = score
+        self.threshold = threshold
+        super().__init__(
+            f"Niche {niche_id} blocked: score={score:.1f} < threshold={threshold:.1f}"
+        )
+
+
+class StrategistError(ColorforgeAgentsError):
+    """Strategist failed to produce a BookPlan."""
+
+
+class ImageGenerationError(ColorforgeAgentsError):
+    """Gemini image generation API call failed."""
+
+
+class PDFAssemblyError(ColorforgeAgentsError):
+    """ReportLab PDF assembly failed."""
+
+
+class CriticError(ColorforgeAgentsError):
+    """Critic agent failed (vision API or JSON parse error)."""
+
+
+class ContentGateBlocked(ColorforgeAgentsError):
+    """BookDraft blocked by Content Gate."""
+    def __init__(self, book_id: str, verdict: str, reason: str) -> None:
+        self.book_id = book_id
+        self.verdict = verdict
+        self.reason = reason
+        super().__init__(f"Book {book_id} blocked: verdict={verdict} — {reason}")

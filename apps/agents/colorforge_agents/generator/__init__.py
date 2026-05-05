@@ -1,0 +1,1 @@
+"""Generator agent — BookPlan → BookDraft."""
