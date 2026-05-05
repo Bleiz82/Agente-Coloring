@@ -1,0 +1,1 @@
+"""Niche Hunter agent."""
