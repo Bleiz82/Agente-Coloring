@@ -60,6 +60,7 @@ module = [
     "reportlab", "reportlab.*",
     "PIL", "PIL.*",
     "pypdf", "pypdf.*",
+    "colorforge_kdp", "colorforge_kdp.*",
 ]
 ignore_missing_imports = true
 

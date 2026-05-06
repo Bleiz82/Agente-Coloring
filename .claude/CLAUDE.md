@@ -49,8 +49,8 @@ ruff + mypy strict | biome | pytest + vitest | conventional commits
 8. No mocks left in production code paths. Tests use mocks; src must not.
 
 ## Current Milestone
-M4 — Generator + Critic (+ Strategist). Status: Complete.
-Next: M5 — DB Schema + Prisma migrations + end-to-end pipeline wiring.
+M5 — SEO Listing + Publisher Integration. Status: Complete.
+Next: M6 — Performance Monitor + Flywheel.
 
 ## Open Decisions (architect log here)
 [2026-04-29] Stack locked per SPEC.md section 4.
@@ -62,6 +62,9 @@ Next: M5 — DB Schema + Prisma migrations + end-to-end pipeline wiring.
 [2026-05-06] Pillow LANCZOS compatibility: use `getattr(PILImage, "Resampling", PILImage).LANCZOS` (works Pillow <9.1 and ≥9.1).
 [2026-05-06] PDF height = 810.0 pt (11.0 + 2×0.125)*72, NOT 819 — confirmed by pypdf roundtrip test.
 [2026-05-06] When all Generator pages fail, skip PDF assembly and touch placeholder file — avoids PDFAssemblyResult(page_count=0) gt=0 violation.
+[2026-05-06] ListingContract Pydantic max_length prevents constructing violating instances — tests use model_construct() to bypass validation for gate length checks.
+[2026-05-06] QuotaExceeded from kdp-client propagates uncaught through PublisherAgent — callers distinguish it from KDP browser failures (PublisherAgentError).
+[2026-05-06] _validate_image_dpi uses round() for DPI comparison — Pillow returns 299.9994 for nominal 300 DPI PNGs (floating point).
 
 ## How to Start a Task
 1. If task is in MILESTONE_M*_PLAN.md, read its acceptance criteria
