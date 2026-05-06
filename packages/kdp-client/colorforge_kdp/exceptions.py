@@ -15,7 +15,8 @@ class QuotaExceeded(ColorforgeKDPError):
         self.limit = limit
         self.current_count = current_count
         super().__init__(
-            f"Account {account_id} has reached daily publish limit ({current_count}/{limit})"
+            f"Account {account_id} has reached weekly per-format publish limit"
+            f" ({current_count}/{limit})"
         )
 
 
