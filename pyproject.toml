@@ -7,6 +7,12 @@ requires-python = ">=3.12"
 [tool.uv.workspace]
 members = ["apps/agents", "apps/worker", "packages/kdp-client"]
 
+
+[tool.uv.sources]
+colorforge-agents = { workspace = true }
+colorforge-worker = { workspace = true }
+colorforge-kdp-client = { workspace = true }
+
 [tool.ruff]
 line-length = 100
 target-version = "py312"

@@ -20,6 +20,7 @@ dependencies = [
     "reportlab>=4.2.0",
     "Pillow>=10.4.0",
     "pypdf>=4.0.0",
+    "colorforge-kdp-client",
 ]
 
 [project.optional-dependencies]
@@ -70,3 +71,6 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.uv.sources]
+colorforge-kdp-client = { workspace = true }
