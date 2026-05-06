@@ -8,7 +8,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
-from colorforge_kdp.types import AccountRecord  # type: ignore[import-untyped]
+from colorforge_kdp.types import AccountRecord
 from loguru import logger
 
 from colorforge_agents.exceptions import SalesScrapingError

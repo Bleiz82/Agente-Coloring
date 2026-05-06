@@ -1,4 +1,4 @@
-"""Tests for PDFAssembler — KDP dimensions and spine formula."""
+"""Tests for PDFAssembler — KDP dimensions, gutter, outside margin, spine."""
 
 from __future__ import annotations
 
@@ -7,8 +7,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from colorforge_agents.contracts.book_plan import PaperType, TrimSize
 from colorforge_agents.exceptions import PDFAssemblyError
 from colorforge_agents.generator.pdf_assembler import (
+    _OUTSIDE_MARGIN_MIN_BLEED_IN,
+    _OUTSIDE_MARGIN_MIN_NO_BLEED_IN,
     BLEED_IN,
     PT_PER_IN,
     SPINE_PER_PAGE,
@@ -17,6 +20,7 @@ from colorforge_agents.generator.pdf_assembler import (
     PDFAssembler,
     PDFAssemblyResult,
     _compute_gutter_inches,
+    _validate_outside_margin,
 )
 
 
@@ -59,23 +63,84 @@ class TestSpineFormula:
     def test_spine_20_pages_min(self) -> None:
         assert assembler.spine_width_inches(20) > 0
 
+    def test_spine_uses_paper_type_multiplier(self) -> None:
+        cream = PDFAssembler(paper_type=PaperType.CREAM)
+        white = PDFAssembler(paper_type=PaperType.WHITE)
+        assert cream.spine_width_inches(100) == pytest.approx(100 * 0.0025)
+        assert white.spine_width_inches(100) == pytest.approx(100 * 0.002252)
+        assert cream.spine_width_inches(100) > white.spine_width_inches(100)
+
 
 class TestGutterScaling:
-    """FIX 2 — _compute_gutter_inches returns correct value per page-count range."""
+    """K02 — _compute_gutter_inches must follow KDP official table (§4)."""
 
-    def test_gutter_scaling_by_page_count(self) -> None:
-        # ≤100 pages → 0.5"
-        assert _compute_gutter_inches(1) == 0.5
-        assert _compute_gutter_inches(100) == 0.5
-        # 101–150 → 0.625"
-        assert _compute_gutter_inches(101) == 0.625
-        assert _compute_gutter_inches(150) == 0.625
-        # 151–300 → 0.75"
-        assert _compute_gutter_inches(151) == 0.75
-        assert _compute_gutter_inches(300) == 0.75
-        # >300 → 0.875"
-        assert _compute_gutter_inches(301) == 0.875
-        assert _compute_gutter_inches(500) == 0.875
+    @pytest.mark.parametrize(
+        ("page_count", "expected"),
+        [
+            # ≤ 150 → 0.375"
+            (1, 0.375),
+            (24, 0.375),
+            (100, 0.375),
+            (150, 0.375),
+            # 151–300 → 0.500"
+            (151, 0.500),
+            (200, 0.500),
+            (300, 0.500),
+            # 301–500 → 0.625"
+            (301, 0.625),
+            (400, 0.625),
+            (500, 0.625),
+            # 501–700 → 0.750"
+            (501, 0.750),
+            (600, 0.750),
+            (700, 0.750),
+            # 701–828 → 0.875"
+            (701, 0.875),
+            (800, 0.875),
+            (828, 0.875),
+        ],
+    )
+    def test_gutter_correct_per_kdp_spec(self, page_count: int, expected: float) -> None:
+        assert _compute_gutter_inches(page_count) == pytest.approx(expected)
+
+
+class TestOutsideMargin:
+    """K03 — _validate_outside_margin raises when outside margin < 0.375"."""
+
+    def test_exact_minimum_passes(self) -> None:
+        # outside_margin = trim_w - gutter - img_w = 8.5 - 0.375 - 7.75 = 0.375"
+        _validate_outside_margin(7.75, 11.0, 8.5, 11.0, gutter_in=0.375, has_bleed=True)
+
+    def test_margin_above_minimum_passes(self) -> None:
+        _validate_outside_margin(7.0, 11.0, 8.5, 11.0, gutter_in=0.375, has_bleed=True)
+
+    def test_outside_margin_too_small_raises(self) -> None:
+        # img_w = 8.5 - 0.375 - 0.001 = 8.124" → outside_margin = 0.001" < 0.375"
+        with pytest.raises(PDFAssemblyError, match="outside margin"):
+            _validate_outside_margin(8.124, 11.0, 8.5, 11.0, gutter_in=0.375, has_bleed=True)
+
+    def test_error_includes_page_index(self) -> None:
+        with pytest.raises(PDFAssemblyError, match="Page 5"):
+            _validate_outside_margin(
+                8.0, 11.0, 8.5, 11.0, gutter_in=0.375, has_bleed=True, page_index=5
+            )
+
+    def test_no_bleed_uses_lower_minimum(self) -> None:
+        # outside_margin = 8.5 - 0.375 - 7.875 = 0.25" — exact no-bleed minimum
+        _validate_outside_margin(
+            7.875, 11.0, 8.5, 11.0, gutter_in=0.375, has_bleed=False
+        )
+
+    def test_no_bleed_too_small_raises(self) -> None:
+        # margin = 8.5 - 0.375 - 7.876 = 0.249" < 0.25"
+        with pytest.raises(PDFAssemblyError):
+            _validate_outside_margin(
+                7.876, 11.0, 8.5, 11.0, gutter_in=0.375, has_bleed=False
+            )
+
+    def test_module_constants_correct(self) -> None:
+        assert _OUTSIDE_MARGIN_MIN_BLEED_IN == 0.375
+        assert _OUTSIDE_MARGIN_MIN_NO_BLEED_IN == 0.25
 
 
 class TestManuscriptDimensions:
@@ -83,7 +148,6 @@ class TestManuscriptDimensions:
         page = _make_white_png(tmp_path)
         out = tmp_path / "ms.pdf"
         result = assembler.assemble_manuscript([page], out)
-        # FIX 1: bleed only on outside edge → 8.625" wide, not 8.75"
         expected_w = round((TRIM_W_IN + BLEED_IN) * PT_PER_IN, 1)   # 621.0 pt
         expected_h = round((TRIM_H_IN + 2 * BLEED_IN) * PT_PER_IN, 1)  # 810.0 pt
         assert abs(result.page_width_pts - expected_w) < 1.0
@@ -114,7 +178,6 @@ class TestManuscriptDimensions:
         assert len(reader.pages) == 1
         w = float(reader.pages[0].mediabox.width)
         h = float(reader.pages[0].mediabox.height)
-        # FIX 1: page width is now 621.0 pt (8.625" × 72), not 630.0
         assert abs(w - 621.0) < 2.0
         assert abs(h - 810.0) < 2.0
 
@@ -128,9 +191,22 @@ class TestManuscriptDimensions:
         with pytest.raises(PDFAssemblyError):
             assembler.assemble_manuscript([tmp_path / "nonexistent.png"], out)
 
+    @pytest.mark.parametrize("trim", list(TrimSize))
+    def test_trim_size_sets_correct_page_dimensions(
+        self, tmp_path: Path, trim: TrimSize
+    ) -> None:
+        asm = PDFAssembler(trim_size=trim)
+        page = _make_white_png(tmp_path, f"page_{trim.value}.png")
+        out = tmp_path / f"ms_{trim.value}.pdf"
+        result = asm.assemble_manuscript([page], out)
+        expected_w = (trim.width_inches + BLEED_IN) * PT_PER_IN
+        expected_h = (trim.height_inches + 2 * BLEED_IN) * PT_PER_IN
+        assert abs(result.page_width_pts - expected_w) < 1.0
+        assert abs(result.page_height_pts - expected_h) < 1.0
+
 
 class TestDPIValidation:
-    """FIX 4 — assemble_manuscript must raise PDFAssemblyError for sub-300 DPI images."""
+    """assemble_manuscript must raise PDFAssemblyError for sub-300 DPI images."""
 
     def test_assemble_raises_on_low_dpi(self, tmp_path: Path) -> None:
         try:
@@ -138,7 +214,6 @@ class TestDPIValidation:
         except ImportError:
             pytest.skip("Pillow not installed")
 
-        # Create a 150-DPI image
         img = Image.new("L", (1275, 1650), color=255)
         low_dpi_path = tmp_path / "low_dpi.png"
         img.save(str(low_dpi_path), format="PNG", dpi=(150, 150))
@@ -149,12 +224,11 @@ class TestDPIValidation:
 
 
 class TestPageBleedAsymmetry:
-    """FIX 3 — drawImage x-position must reflect left/right page bleed asymmetry."""
+    """drawImage x-position must reflect left/right page bleed asymmetry."""
 
     def _run_assemble_with_mock_canvas(
         self, tmp_path: Path, page_count: int
     ) -> list[tuple]:
-        """Run assemble_manuscript with a mocked canvas and return drawImage call args."""
         pages = [_make_white_png(tmp_path, f"p{i}.png") for i in range(page_count)]
         out = tmp_path / "ms.pdf"
 
@@ -176,36 +250,28 @@ class TestPageBleedAsymmetry:
         return draw_calls
 
     def test_right_page_has_gutter_on_left(self, tmp_path: Path) -> None:
-        """Page idx=0 (right/recto): x must equal gutter_pt, not bleed_pt."""
         draw_calls = self._run_assemble_with_mock_canvas(tmp_path, page_count=2)
         gutter_pt = _compute_gutter_inches(2) * PT_PER_IN
         bleed_pt = BLEED_IN * PT_PER_IN
 
-        # First call → page 0 → right page
         _args, kwargs = draw_calls[0]
-        x_used = _args[1]  # positional: (str(img_path), x, y, ...)
+        x_used = _args[1]
         assert abs(x_used - gutter_pt) < 1e-6, (
             f"Right page (idx=0) expected x={gutter_pt:.2f} (gutter), got {x_used:.2f}"
         )
-        assert abs(x_used - bleed_pt) > 1e-6, (
-            "Right page must NOT start at bleed_pt"
-        )
+        assert abs(x_used - bleed_pt) > 1e-6
 
     def test_left_page_has_bleed_on_left(self, tmp_path: Path) -> None:
-        """Page idx=1 (left/verso): x must equal bleed_pt, not gutter_pt."""
         draw_calls = self._run_assemble_with_mock_canvas(tmp_path, page_count=2)
         bleed_pt = BLEED_IN * PT_PER_IN
         gutter_pt = _compute_gutter_inches(2) * PT_PER_IN
 
-        # Second call → page 1 → left page
         _args, kwargs = draw_calls[1]
         x_used = _args[1]
         assert abs(x_used - bleed_pt) < 1e-6, (
             f"Left page (idx=1) expected x={bleed_pt:.2f} (bleed), got {x_used:.2f}"
         )
-        assert abs(x_used - gutter_pt) > 1e-6, (
-            "Left page must NOT start at gutter_pt"
-        )
+        assert abs(x_used - gutter_pt) > 1e-6
 
 
 class TestCoverDimensions:
@@ -236,12 +302,20 @@ class TestCoverDimensions:
         with pytest.raises(PDFAssemblyError):
             assembler.assemble_cover(tmp_path / "missing.png", 75, tmp_path / "cover.pdf")
 
+    @pytest.mark.parametrize("trim", list(TrimSize))
+    def test_cover_height_follows_trim_size(self, tmp_path: Path, trim: TrimSize) -> None:
+        asm = PDFAssembler(trim_size=trim)
+        cover = _make_white_png(tmp_path, f"cover_{trim.value}.png")
+        result = asm.assemble_cover(cover, 75, tmp_path / f"cover_{trim.value}.pdf")
+        expected_h = (trim.height_inches + 2 * BLEED_IN) * PT_PER_IN
+        assert abs(result.page_height_pts - expected_h) < 1.0
+
 
 class TestPDFAssemblyResult:
     def test_result_model_valid(self) -> None:
         r = PDFAssemblyResult(
             output_path="/tmp/test.pdf",
-            page_width_pts=621.0,   # FIX 1: updated from 630.0 → 621.0
+            page_width_pts=621.0,
             page_height_pts=810.0,
             page_count=1,
         )

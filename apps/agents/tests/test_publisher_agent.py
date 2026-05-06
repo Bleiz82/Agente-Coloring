@@ -239,8 +239,8 @@ class TestGateChecks:
                 pass
 
             async def find_many(self, **_: object) -> list[object]:
-                # Return 5 books today → quota exceeded for ramp account
-                return [object()] * 5
+                # Return 10 books this week → weekly quota exceeded
+                return [object()] * 10
 
         class _FullPrisma(_MockPrisma):
             def __init__(self) -> None:
@@ -255,6 +255,33 @@ class TestGateChecks:
                 _MockAccount(),
                 _passing_report(),
             )
+
+    async def test_quota_separate_per_format(self) -> None:
+        """Paperback weekly quota full must not block hardcover publications."""
+        from colorforge_kdp.exceptions import QuotaExceeded
+        from colorforge_kdp.quota import check_and_consume_quota
+
+        class _FormatAwareBook:
+            async def find_many(
+                self, where: dict[str, object], **_: object
+            ) -> list[object]:
+                if where.get("bookFormat") == "PAPERBACK":
+                    return [object()] * 10  # quota full for paperback
+                return []  # hardcover: 0 publications this week
+
+        class _FormatAwarePrisma:
+            def __init__(self) -> None:
+                self.book = _FormatAwareBook()
+
+        mock_account = _MockAccount()
+        prisma = _FormatAwarePrisma()
+
+        # Paperback must be blocked
+        with pytest.raises(QuotaExceeded):
+            await check_and_consume_quota(mock_account, prisma, "PAPERBACK")
+
+        # Hardcover must NOT be blocked (different format counter)
+        await check_and_consume_quota(mock_account, prisma, "HARDCOVER")
 
 
 class TestPublisherResult:

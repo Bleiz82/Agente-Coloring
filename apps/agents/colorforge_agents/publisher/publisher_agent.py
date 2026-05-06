@@ -10,6 +10,7 @@ from typing import Any
 from loguru import logger
 
 from colorforge_agents.contracts.book_draft import BookDraft
+from colorforge_agents.contracts.book_plan import BookFormat
 from colorforge_agents.contracts.listing import ListingContract
 from colorforge_agents.contracts.validation_report import ValidationReport
 from colorforge_agents.exceptions import PublisherAgentError
@@ -45,6 +46,7 @@ class PublisherAgent:
         draft: BookDraft,
         account: Any,  # colorforge_kdp.types.AccountRecord
         report: ValidationReport,
+        book_format: BookFormat = BookFormat.PAPERBACK,
     ) -> PublisherResult:
         """Run full publish pipeline. Returns PublisherResult with ASIN on success."""
         book_id = draft.book_id
@@ -55,10 +57,10 @@ class PublisherAgent:
         # 2. Listing compliance gate
         self._listing_gate.passes(listing)  # raises ListingGateBlocked if not
 
-        # 3. Daily quota check
+        # 3. Weekly per-format quota check
         try:
             from colorforge_kdp.quota import check_and_consume_quota
-            await check_and_consume_quota(account, self._prisma)
+            await check_and_consume_quota(account, self._prisma, book_format.value)
         except ImportError as exc:
             raise PublisherAgentError("colorforge_kdp not installed") from exc
 
