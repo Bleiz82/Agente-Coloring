@@ -49,8 +49,8 @@ ruff + mypy strict | biome | pytest + vitest | conventional commits
 8. No mocks left in production code paths. Tests use mocks; src must not.
 
 ## Current Milestone
-M6.5 — KDP Compliance Fix. Status: Complete.
-Next: M7 — Dashboard.
+M7 — Dashboard. Status: Complete.
+Next: M8 — KDP compliance (K05-K07, K09-K10) + pipeline hardening.
 
 ### M6.5 Fixes Applied (2026-05-06)
 - K01: Weekly per-format quota (10/week) replaces daily quota (5/day) in `colorforge_kdp/quota.py`
@@ -62,6 +62,17 @@ Next: M7 — Dashboard.
 - K12: `CoverFinish` enum + field on `BookPlan` (default MATTE)
 - `BookFormat` enum (PAPERBACK/HARDCOVER) added; quota tracked per-format
 - Deferred to M8: K05 (trademark blacklist), K06 (CMYK cover), K07 (barcode area), K09, K10
+
+### M7 Dashboard Delivered (2026-05-06)
+- Next.js 14 App Router dashboard at `apps/dashboard/` — TypeScript strict, tRPC v11, Prisma 5
+- Health engine: `computeSystemHealth` pure fn, 5-state beacon (BLACK/RED/ORANGE/YELLOW/GREEN)
+- tRPC routers: health, alerts, books, accounts, sales, policies, killswitch, feedback
+- Pages: Overview, Books, Performance, Niches, Ledger, Alerts, Policies, Accounts, Settings, Research, Research/[nicheId]
+- UI components: StatusBeacon, KPICard, SparkLine, AlertRow, PolicyCard, BookTable, KillswitchButton, RoyaltyChart, BookStateChart
+- Auth: JWT (jose), bcrypt, httpOnly cookie, middleware guard
+- SSE: /api/sse/alerts for live alert streaming
+- Tests: 77 Vitest unit tests (health engine 46, format 21, killswitch 8) + 8 Playwright E2E scenarios
+- Schema extensions: FeedbackEvent, SystemConfig, SystemState, CompetitorSnapshot (v2.2 CI models)
 
 ## Open Decisions (architect log here)
 [2026-04-29] Stack locked per SPEC.md section 4.
