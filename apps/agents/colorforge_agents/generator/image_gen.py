@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+from typing import Any
 
 from loguru import logger
 
@@ -23,11 +24,11 @@ class GeminiImageClient:
         self._api_key = api_key
         self._model = model
         self._semaphore = asyncio.Semaphore(_MAX_CONCURRENT)
-        self._client: object | None = None
+        self._client: Any = None
 
-    def _get_client(self) -> object:
+    def _get_client(self) -> Any:
         if self._client is None:
-            from google import genai  # type: ignore[import]
+            from google import genai
 
             self._client = genai.Client(api_key=self._api_key)
         return self._client
@@ -49,16 +50,15 @@ class GeminiImageClient:
                         wait,
                     )
                     await asyncio.sleep(wait)
-        raise ImageGenerationError("generate_image: semaphore released without result")  # unreachable
+        raise ImageGenerationError("generate_image: unreachable code path")
 
     async def _call_api(self, prompt: str) -> bytes:
         """Single API call — returns PNG bytes or raises ImageGenerationError."""
         try:
-            from google import genai  # type: ignore[import]
-            from google.genai import types  # type: ignore[import]
+            from google.genai import types
 
             client = self._get_client()
-            response = await client.aio.models.generate_content(  # type: ignore[union-attr]
+            response = await client.aio.models.generate_content(
                 model=self._model,
                 contents=prompt,
                 config=types.GenerateContentConfig(

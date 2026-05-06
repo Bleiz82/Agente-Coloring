@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import random
 from dataclasses import dataclass
+from typing import Any
 
 from colorforge_agents.exceptions import ImageGenerationError
 
@@ -34,12 +35,13 @@ class ImagePostProcessor:
     def process(self, image_bytes: bytes) -> ProcessedImage:
         """Full pipeline: decode → grayscale → contrast → resize → artifact check → encode."""
         try:
-            from PIL import Image, ImageOps  # type: ignore[import]
+            from PIL import Image  # noqa: F401
         except ImportError as exc:
             raise ImageGenerationError("Pillow not installed") from exc
 
         try:
-            img = Image.open(io.BytesIO(image_bytes))
+            from PIL import Image as PILImage
+            img: Any = PILImage.open(io.BytesIO(image_bytes))
         except Exception as exc:
             raise ImageGenerationError(f"Cannot open image: {exc}") from exc
 
@@ -58,44 +60,35 @@ class ImagePostProcessor:
             height_px=img.height,
         )
 
-    def _to_grayscale(self, img: object) -> object:
-        from PIL import Image  # type: ignore[import]
+    def _to_grayscale(self, img: Any) -> Any:
+        if img.mode != "L":
+            img = img.convert("L")
+        return img
 
-        pil_img: Image.Image = img  # type: ignore[assignment]
-        if pil_img.mode != "L":
-            pil_img = pil_img.convert("L")
-        return pil_img
-
-    def _normalize_contrast(self, img: object) -> object:
-        from PIL import Image  # type: ignore[import]
-
-        pil_img: Image.Image = img  # type: ignore[assignment]
-        # Linear stretch: map current min/max to [_CONTRAST_LOW, _CONTRAST_HIGH]
+    def _normalize_contrast(self, img: Any) -> Any:
         import numpy as np
 
-        arr = np.array(pil_img, dtype=np.float32)
+        arr = np.array(img, dtype=np.float32)
         lo, hi = float(arr.min()), float(arr.max())
         if hi - lo < 1.0:
-            return pil_img  # already uniform; skip to avoid divide-by-zero
+            return img  # uniform image — skip to avoid divide-by-zero
         stretched = (arr - lo) / (hi - lo) * (_CONTRAST_HIGH - _CONTRAST_LOW) + _CONTRAST_LOW
         stretched = np.clip(stretched, 0, 255).astype(np.uint8)
-        return Image.fromarray(stretched, mode="L")
+        from PIL import Image as PILImage
+        return PILImage.fromarray(stretched, mode="L")
 
-    def _resize_to_target(self, img: object) -> object:
-        from PIL import Image  # type: ignore[import]
+    def _resize_to_target(self, img: Any) -> Any:
+        if img.width != _PAGE_W_PX or img.height != _PAGE_H_PX:
+            from PIL import Image as PILImage
+            resample = getattr(PILImage, "Resampling", PILImage).LANCZOS
+            img = img.resize((_PAGE_W_PX, _PAGE_H_PX), resample)
+        return img
 
-        pil_img: Image.Image = img  # type: ignore[assignment]
-        if pil_img.width != _PAGE_W_PX or pil_img.height != _PAGE_H_PX:
-            pil_img = pil_img.resize((_PAGE_W_PX, _PAGE_H_PX), Image.LANCZOS)
-        return pil_img
-
-    def _detect_artifacts(self, img: object) -> bool:
+    def _detect_artifacts(self, img: Any) -> bool:
         """Return True if any 50×50 random patch has std-dev below threshold (near-solid)."""
         import numpy as np
-        from PIL import Image  # type: ignore[import]
 
-        pil_img: Image.Image = img  # type: ignore[assignment]
-        arr = np.array(pil_img, dtype=np.float32)
+        arr = np.array(img, dtype=np.float32)
         h, w = arr.shape
 
         if h < _ARTIFACT_PATCH_SIZE or w < _ARTIFACT_PATCH_SIZE:
