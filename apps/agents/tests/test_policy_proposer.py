@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -102,7 +102,10 @@ def test_parse_response_skips_empty_rule_text():
 def test_parse_response_max_five():
     p = _make_proposer()
     raw = [
-        {"rule_text": f"Rule {i}", "rule_machine_readable": {}, "applies_to": ["strategist"], "confidence_score": 50}
+        {
+            "rule_text": f"Rule {i}", "rule_machine_readable": {},
+            "applies_to": ["strategist"], "confidence_score": 50,
+        }
         for i in range(10)
     ]
     policies = p._parse_response(raw)

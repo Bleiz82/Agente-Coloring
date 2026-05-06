@@ -49,8 +49,19 @@ ruff + mypy strict | biome | pytest + vitest | conventional commits
 8. No mocks left in production code paths. Tests use mocks; src must not.
 
 ## Current Milestone
-M6 — Performance Monitor + Flywheel. Status: Complete.
+M6.5 — KDP Compliance Fix. Status: Complete.
 Next: M7 — Dashboard.
+
+### M6.5 Fixes Applied (2026-05-06)
+- K01: Weekly per-format quota (10/week) replaces daily quota (5/day) in `colorforge_kdp/quota.py`
+- K02: Gutter table corrected in `pdf_assembler._compute_gutter_inches` (was 0.5/0.625/0.75, now 0.375/0.5/0.625/0.75/0.875)
+- K03: Outside margin validation added (`_validate_outside_margin`, constant 0.375" with bleed)
+- K04: kdp-specs.md spine text threshold corrected from 100 → 79 pages
+- K08: `TrimSize` enum (5 sizes) + `trim_size` field on `BookPlan`; Strategist auto-selects from niche keywords
+- K11: `PaperType` enum with `spine_multiplier` property; `PDFAssembler.spine_width_inches()` uses it
+- K12: `CoverFinish` enum + field on `BookPlan` (default MATTE)
+- `BookFormat` enum (PAPERBACK/HARDCOVER) added; quota tracked per-format
+- Deferred to M8: K05 (trademark blacklist), K06 (CMYK cover), K07 (barcode area), K09, K10
 
 ## Open Decisions (architect log here)
 [2026-04-29] Stack locked per SPEC.md section 4.
@@ -65,6 +76,9 @@ Next: M7 — Dashboard.
 [2026-05-06] ListingContract Pydantic max_length prevents constructing violating instances — tests use model_construct() to bypass validation for gate length checks.
 [2026-05-06] QuotaExceeded from kdp-client propagates uncaught through PublisherAgent — callers distinguish it from KDP browser failures (PublisherAgentError).
 [2026-05-06] _validate_image_dpi uses round() for DPI comparison — Pillow returns 299.9994 for nominal 300 DPI PNGs (floating point).
+[2026-05-06] BookPlan has trim_size/paper_type/cover_finish/book_format fields with backward-compatible defaults — existing tests unaffected.
+[2026-05-06] PDFAssembler.__init__ now takes trim_size and paper_type; module-level TRIM_W_IN/TRIM_H_IN kept as backward-compat constants for LETTER.
+[2026-05-06] assemble_manuscript reserves outside margin 0.375" (bleed) when computing img_w — previously filled to trim edge leaving 0" margin.
 
 ## How to Start a Task
 1. If task is in MILESTONE_M*_PLAN.md, read its acceptance criteria
