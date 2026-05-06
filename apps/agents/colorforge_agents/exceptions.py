@@ -74,3 +74,26 @@ class ListingGateBlocked(ColorforgeAgentsError):
 
 class PublisherAgentError(ColorforgeAgentsError):
     """Publisher agent orchestration failure (not a KDP step failure)."""
+
+
+class SalesScrapingError(ColorforgeAgentsError):
+    """KDP Reports scraping failed for an account."""
+    def __init__(self, account_id: str, reason: str) -> None:
+        self.account_id = account_id
+        self.reason = reason
+        super().__init__(f"Sales scraping failed for account {account_id}: {reason}")
+
+
+class InsufficientSalesData(ColorforgeAgentsError):
+    """Not enough sales data for differential analysis."""
+    def __init__(self, account_id: str, min_required: int, actual: int) -> None:
+        self.account_id = account_id
+        self.min_required = min_required
+        self.actual = actual
+        super().__init__(
+            f"Account {account_id}: need {min_required} samples, got {actual}"
+        )
+
+
+class PerformanceMonitorError(ColorforgeAgentsError):
+    """Performance Monitor orchestration failure."""

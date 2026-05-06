@@ -49,8 +49,8 @@ ruff + mypy strict | biome | pytest + vitest | conventional commits
 8. No mocks left in production code paths. Tests use mocks; src must not.
 
 ## Current Milestone
-M5 — SEO Listing + Publisher Integration. Status: Complete.
-Next: M6 — Performance Monitor + Flywheel.
+M6 — Performance Monitor + Flywheel. Status: Complete.
+Next: M7 — Dashboard.
 
 ## Open Decisions (architect log here)
 [2026-04-29] Stack locked per SPEC.md section 4.
