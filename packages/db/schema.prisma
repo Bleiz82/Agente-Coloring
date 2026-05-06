@@ -52,9 +52,12 @@ model Niche {
   profitabilityScore Float
   scanRunId          String   @db.Uuid
 
-  brief   NicheBrief?
-  books   Book[]
-  reviews ReviewScraped[]
+  brief               NicheBrief?
+  books               Book[]
+  reviews             ReviewScraped[]
+  competitorSnapshots CompetitorSnapshot[]
+  battleCard          NicheBattleCard?
+  styleWeights        NicheStyleWeights?
 
   @@index([scanDate])
   @@index([profitabilityScore(sort: Desc)])
@@ -369,4 +372,142 @@ model Alert {
   @@index([acknowledged, severity])
   @@index([createdAt])
   @@map("alerts")
+}
+
+// =================================================================
+// M7 — Dashboard / LEARN loop domain
+// =================================================================
+
+model FeedbackEvent {
+  id          String   @id @default(uuid()) @db.Uuid
+  actorId     String   @default("owner")
+  actionType  String
+  targetType  String?
+  targetId    String?
+  beforeState Json?
+  afterState  Json?
+  note        String?  @db.Text
+  payload     Json?
+  createdAt   DateTime @default(now())
+
+  @@index([actionType])
+  @@index([createdAt])
+  @@map("feedback_events")
+}
+
+model SystemConfig {
+  id        String   @id @default(uuid()) @db.Uuid
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt
+  updatedBy String   @default("owner")
+
+  @@map("system_config")
+}
+
+model SystemState {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique
+  value       String
+  reason      String?
+  activatedAt DateTime @default(now())
+  activatedBy String   @default("owner")
+
+  @@map("system_state")
+}
+
+// =================================================================
+// M7.6 — Competitor Intelligence (schema predisposition, data from M7.6)
+// =================================================================
+
+model CompetitorSnapshot {
+  id              String    @id @default(cuid())
+  nicheId         String    @db.Uuid
+  asin            String
+  title           String
+  authorName      String?
+  coverImageUrl   String?
+  bsrCurrent      Int?
+  bsrHistory      Json?
+  priceCents      Int?
+  pageCount       Int?
+  trimSize        String?
+  reviewsCount    Int?
+  ratingAvg       Float?
+  publicationDate DateTime?
+  description     String?   @db.Text
+  capturedAt      DateTime  @default(now())
+
+  niche         Niche          @relation(fields: [nicheId], references: [id])
+  coverAnalysis CoverAnalysis?
+  reviewMining  ReviewMining?
+
+  @@unique([asin, capturedAt])
+  @@index([nicheId, bsrCurrent])
+  @@map("competitor_snapshots")
+}
+
+model CoverAnalysis {
+  id                   String             @id @default(cuid())
+  competitorSnapshotId String             @unique
+  dominantPalette      Json
+  illustrationStyle    String?
+  composition          String?
+  hasTitleText         Boolean            @default(true)
+  fontCategory         String?
+  thumbnailScore       Float?
+  rawAnalysis          Json
+  analyzedAt           DateTime           @default(now())
+
+  snapshot CompetitorSnapshot @relation(fields: [competitorSnapshotId], references: [id])
+
+  @@map("cover_analyses")
+}
+
+model ReviewMining {
+  id                   String             @id @default(cuid())
+  competitorSnapshotId String             @unique
+  reviewsAnalyzed      Int
+  positiveThemes       Json
+  negativeThemes       Json
+  vocSentiment         Float
+  topPraisedFeatures   String[]
+  topPainPoints        String[]
+  analyzedAt           DateTime           @default(now())
+
+  snapshot CompetitorSnapshot @relation(fields: [competitorSnapshotId], references: [id])
+
+  @@map("review_mining")
+}
+
+model NicheBattleCard {
+  id                  String   @id @default(cuid())
+  nicheId             String   @unique @db.Uuid
+  dominantPalette     Json
+  winningStylePattern Json
+  outlierPatterns     Json
+  mustHaveFeatures    String[]
+  gapFeatures         String[]
+  avgPriceCents       Int
+  avgPageCount        Int
+  recommendedTrimSize String?
+  topKeywordPatterns  String[]
+  generatedAt         DateTime @default(now())
+  refreshedAt         DateTime @default(now())
+
+  niche Niche @relation(fields: [nicheId], references: [id])
+
+  @@map("niche_battle_cards")
+}
+
+model NicheStyleWeights {
+  id             String   @id @default(cuid())
+  nicheId        String   @unique @db.Uuid
+  weights        Json
+  performanceRef Json
+  lastTunedAt    DateTime @default(now())
+
+  niche Niche @relation(fields: [nicheId], references: [id])
+
+  @@map("niche_style_weights")
 }
