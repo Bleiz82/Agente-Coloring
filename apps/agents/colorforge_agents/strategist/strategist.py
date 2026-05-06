@@ -100,7 +100,7 @@ class StrategistCore:
         """Derive a style fingerprint from the dominant style classification."""
         if brief.style_classifications:
             top = brief.style_classifications[0]
-            slug = top.style_name.lower().replace(" ", "-")
+            slug = top.name.lower().replace(" ", "-")
             return f"{slug}-{brief.primary_keyword.split()[0].lower()}"
         keyword_slug = brief.primary_keyword.lower().replace(" ", "-")
         return f"standard-{keyword_slug}"
@@ -148,7 +148,7 @@ class StrategistCore:
 
         if brief.style_classifications:
             for s in brief.style_classifications[:3]:
-                base_themes.append(f"{s.style_name} composition")
+                base_themes.append(f"{s.name} composition")
 
         if not base_themes:
             base_themes = [
@@ -182,10 +182,7 @@ class StrategistCore:
             "with intricate details, suitable for a coloring book cover"
         )
         palette = "#1A0033, #003366, #FFD700"
-        if brief.style_classifications:
-            top = brief.style_classifications[0]
-            if hasattr(top, "palette_hint") and top.palette_hint:
-                palette = top.palette_hint
+        # StyleClassification has no palette_hint field; use default palette
 
         return CoverBrief(
             subject=subject,
