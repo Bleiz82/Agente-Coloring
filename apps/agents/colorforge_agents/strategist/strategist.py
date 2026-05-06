@@ -7,7 +7,13 @@ from typing import Any, Literal
 from loguru import logger
 from pydantic import BaseModel, Field
 
-from colorforge_agents.contracts.book_plan import BookPlan, CoverBrief, PagePrompt
+from colorforge_agents.contracts.book_plan import (
+    BookPlan,
+    CoverBrief,
+    PagePrompt,
+    PaperType,
+    TrimSize,
+)
 from colorforge_agents.contracts.niche_brief import NicheBrief
 from colorforge_agents.exceptions import StrategistError
 
@@ -26,7 +32,7 @@ class StrategistConfig(BaseModel):
 
     page_count: int = Field(default=75, ge=20, le=200)
     target_price: float = Field(default=7.99, gt=0)
-    max_daily_pubs_per_account: int = Field(default=5, ge=1)
+    max_weekly_pubs_per_format: int = Field(default=10, ge=1)
 
 
 _COMPLEXITY: dict[str, Literal["sparse", "medium", "dense"]] = {
@@ -76,6 +82,8 @@ class StrategistCore:
             target_keyword=brief.primary_keyword,
             target_price=config.target_price,
             brand_author=account.brand_author,
+            trim_size=self._choose_trim_size(brief),
+            paper_type=self._choose_paper_type(brief),
         )
         logger.info(
             "Strategist planned book: keyword='{}' account='{}' pages={}",
@@ -89,8 +97,10 @@ class StrategistCore:
         self, accounts: list[AccountState], config: StrategistConfig
     ) -> AccountState:
         """Return account with fewest recent publications; tiebreak by account_id."""
+        # ~4.3 weeks/month × weekly limit gives rough 30-day ceiling
+        monthly_ceiling = config.max_weekly_pubs_per_format * 4
         eligible = [
-            a for a in accounts if a.publications_last_30d < config.max_daily_pubs_per_account * 30
+            a for a in accounts if a.publications_last_30d < monthly_ceiling
         ]
         if not eligible:
             eligible = accounts
@@ -174,6 +184,45 @@ class StrategistCore:
                 break
 
         return expanded[:page_count] if expanded else base_themes
+
+    def _choose_trim_size(self, brief: NicheBrief) -> TrimSize:
+        """Select the most appropriate KDP trim size based on niche keywords.
+
+        Uses substring matching so "children's" matches "children" etc.
+        Priority order: SQUARE_LARGE > KIDS > INTERMEDIATE > POCKET > LETTER (default).
+
+        Args:
+            brief: NicheBrief with primary_keyword.
+
+        Returns:
+            TrimSize enum value (defaults to LETTER = 8.5×11").
+        """
+        keyword = brief.primary_keyword.lower()
+        _SQUARE_KEYWORDS = ("mandala", "geometric", "zen")
+        _KIDS_KEYWORDS = ("kids", "children", "toddler", "preschool")
+        _INTERMEDIATE_KEYWORDS = ("workbook", "activity", "educational")
+        _POCKET_KEYWORDS = ("travel", "pocket", "mini")
+
+        if any(kw in keyword for kw in _SQUARE_KEYWORDS):
+            return TrimSize.SQUARE_LARGE
+        if any(kw in keyword for kw in _KIDS_KEYWORDS):
+            return TrimSize.KIDS
+        if any(kw in keyword for kw in _INTERMEDIATE_KEYWORDS):
+            return TrimSize.INTERMEDIATE
+        if any(kw in keyword for kw in _POCKET_KEYWORDS):
+            return TrimSize.POCKET
+        return TrimSize.LETTER
+
+    def _choose_paper_type(self, brief: NicheBrief) -> PaperType:
+        """Return paper type for the niche. Always WHITE for B/W coloring books.
+
+        Args:
+            brief: NicheBrief (reserved for future color-book logic).
+
+        Returns:
+            PaperType.WHITE.
+        """
+        return PaperType.WHITE
 
     def _cover_brief_from_niche(self, brief: NicheBrief, style_fp: str) -> CoverBrief:
         """Build a cover brief from the niche brief."""

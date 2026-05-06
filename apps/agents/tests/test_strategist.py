@@ -152,6 +152,53 @@ class TestStyleFingerprint:
         assert "cat" in plan.style_fingerprint.lower()
 
 
+class TestTrimSizeSelection:
+    """Strategist auto-selects TrimSize based on niche keywords."""
+
+    @pytest.mark.parametrize(
+        ("keyword", "expected_trim"),
+        [
+            ("mandala coloring book", "8.5x8.5"),
+            ("geometric patterns for adults", "8.5x8.5"),
+            ("zen garden coloring", "8.5x8.5"),
+            ("kids coloring book animals", "8x10"),
+            ("children's coloring pages", "8x10"),
+            ("toddler activity book", "8x10"),
+            ("preschool coloring fun", "8x10"),
+            ("workbook for adults", "7x10"),
+            ("activity pages educational", "7x10"),
+            ("educational coloring book", "7x10"),
+            ("travel coloring book", "6x9"),
+            ("pocket coloring mini art", "6x9"),
+            ("mini coloring book", "6x9"),
+            ("ocean coloring book adults", "8.5x11"),  # default
+            ("floral patterns coloring", "8.5x11"),    # default
+        ],
+    )
+    async def test_strategist_trim_size_selection(
+        self,
+        core: StrategistCore,
+        keyword: str,
+        expected_trim: str,
+    ) -> None:
+        plan = await core.plan(_brief(keyword), _accounts(), StrategistConfig())
+        assert plan.trim_size.value == expected_trim, (
+            f"keyword={keyword!r}: expected {expected_trim}, got {plan.trim_size.value}"
+        )
+
+    async def test_plan_has_paper_type_white(self, core: StrategistCore) -> None:
+        from colorforge_agents.contracts.book_plan import PaperType
+
+        plan = await core.plan(_brief(), _accounts(), StrategistConfig())
+        assert plan.paper_type == PaperType.WHITE
+
+    async def test_plan_has_default_cover_finish_matte(self, core: StrategistCore) -> None:
+        from colorforge_agents.contracts.book_plan import CoverFinish
+
+        plan = await core.plan(_brief(), _accounts(), StrategistConfig())
+        assert plan.cover_finish == CoverFinish.MATTE
+
+
 class TestPlanStructure:
     async def test_book_plan_has_cover_brief(self, core: StrategistCore) -> None:
         plan = await core.plan(_brief(), _accounts(), StrategistConfig())
