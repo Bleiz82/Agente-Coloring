@@ -49,8 +49,8 @@ ruff + mypy strict | biome | pytest + vitest | conventional commits
 8. No mocks left in production code paths. Tests use mocks; src must not.
 
 ## Current Milestone
-M3 — Niche Hunter + Deep Scout. Status: Complete.
-Next: M4 — Generator + Critic.
+M4 — Generator + Critic (+ Strategist). Status: Complete.
+Next: M5 — DB Schema + Prisma migrations + end-to-end pipeline wiring.
 
 ## Open Decisions (architect log here)
 [2026-04-29] Stack locked per SPEC.md section 4.
@@ -59,6 +59,9 @@ Next: M4 — Generator + Critic.
 [2026-05-04] playwright-stealth v2.x API: use Stealth().apply_stealth_async(page) — stealth_async removed in v2.
 [2026-05-04] age CLI binary (subprocess) used for storageState encryption, not pure-Python age.
 [2026-05-04] Worker uses RQ (not Celery) per SPEC.md §4. Systemd timer handles scheduling.
+[2026-05-06] Pillow LANCZOS compatibility: use `getattr(PILImage, "Resampling", PILImage).LANCZOS` (works Pillow <9.1 and ≥9.1).
+[2026-05-06] PDF height = 810.0 pt (11.0 + 2×0.125)*72, NOT 819 — confirmed by pypdf roundtrip test.
+[2026-05-06] When all Generator pages fail, skip PDF assembly and touch placeholder file — avoids PDFAssemblyResult(page_count=0) gt=0 violation.
 
 ## How to Start a Task
 1. If task is in MILESTONE_M*_PLAN.md, read its acceptance criteria

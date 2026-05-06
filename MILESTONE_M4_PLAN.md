@@ -1,6 +1,6 @@
 # Milestone 4 — Generator + Critic (+ Strategist)
 
-**Status:** In Progress
+**Status:** Complete
 **Owner:** architect (planning) → implementer (execution) → tester (verification)
 **Token budget:** 250k
 **Branch:** main (continuing)
@@ -13,17 +13,17 @@ Build three agents:
 Also implements the Content Gate between Generator and downstream agents.
 
 ## Acceptance criteria (whole milestone)
-- [ ] `StrategistCore.plan(brief, accounts, config)` returns a valid `BookPlan` (prompts, account, price)
-- [ ] `GeminiImageClient.generate_image(prompt)` calls the API with semaphore-3 concurrency and returns PNG bytes
-- [ ] `ImagePostProcessor.process(bytes)` returns grayscale 300-DPI PNG with artifact flag
-- [ ] `PDFAssembler.assemble_manuscript(pages, output)` produces a PDF with correct KDP dimensions
-- [ ] `GeneratorCore.generate(plan)` produces a `BookDraft` with manuscript + cover PDFs and all page metadata
-- [ ] `VisionChecker.check_pages(paths)` returns `list[list[PageFlag]]` parsed from Claude vision JSON
-- [ ] `CriticCore.critique(draft)` returns a `ValidationReport` with correct verdict logic
-- [ ] `ContentGate.passes(report)` blocks drafts with ≥1 severity-4+ flag or >10% minor flags
-- [ ] `python scripts/run_generation.py --dry-run` exits 0
-- [ ] mypy --strict + ruff passing on all M4 modules
-- [ ] >80% coverage on content_gate.py and pdf_assembler.py (deterministic logic)
+- [x] `StrategistCore.plan(brief, accounts, config)` returns a valid `BookPlan` (prompts, account, price)
+- [x] `GeminiImageClient.generate_image(prompt)` calls the API with semaphore-3 concurrency and returns PNG bytes
+- [x] `ImagePostProcessor.process(bytes)` returns grayscale 300-DPI PNG with artifact flag
+- [x] `PDFAssembler.assemble_manuscript(pages, output)` produces a PDF with correct KDP dimensions
+- [x] `GeneratorCore.generate(plan)` produces a `BookDraft` with manuscript + cover PDFs and all page metadata
+- [x] `VisionChecker.check_pages(paths)` returns `list[list[PageFlag]]` parsed from Claude vision JSON
+- [x] `CriticCore.critique(draft)` returns a `ValidationReport` with correct verdict logic
+- [x] `ContentGate.passes(report)` blocks drafts with ≥1 severity-4+ flag or >10% minor flags
+- [x] `python scripts/run_generation.py --dry-run` exits 0
+- [x] mypy --strict + ruff passing on all M4 modules
+- [x] >80% coverage on content_gate.py and pdf_assembler.py (deterministic logic)
 
 ## Architectural decisions
 [2026-05-05] `google-genai>=0.8.0` SDK used for Gemini image generation.
