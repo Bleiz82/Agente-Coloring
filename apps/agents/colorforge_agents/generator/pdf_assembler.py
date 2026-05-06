@@ -18,7 +18,7 @@ SPINE_PER_PAGE = 0.002252  # KDP white-paper formula
 
 # Full page including bleed (points)
 _PAGE_W_PT = (TRIM_W_IN + 2 * BLEED_IN) * PT_PER_IN   # 630.0 pt
-_PAGE_H_PT = (TRIM_H_IN + 2 * BLEED_IN) * PT_PER_IN   # 819.0 pt
+_PAGE_H_PT = (TRIM_H_IN + 2 * BLEED_IN) * PT_PER_IN   # 810.0 pt
 
 # Image draw area: trim size (no bleed), shifted right by gutter on left-hand pages
 _IMG_W_PT = TRIM_W_IN * PT_PER_IN                      # 612.0 pt
@@ -52,8 +52,7 @@ class PDFAssembler:
         The raster image is drawn inside the trim area.
         """
         try:
-            from reportlab.lib.units import inch  # type: ignore[import]
-            from reportlab.pdfgen import canvas  # type: ignore[import]
+            from reportlab.pdfgen import canvas
         except ImportError as exc:
             raise PDFAssemblyError("reportlab not installed") from exc
 
@@ -99,7 +98,7 @@ class PDFAssembler:
         Cover height = trim_h + 2 * bleed
         """
         try:
-            from reportlab.pdfgen import canvas  # type: ignore[import]
+            from reportlab.pdfgen import canvas
         except ImportError as exc:
             raise PDFAssemblyError("reportlab not installed") from exc
 
