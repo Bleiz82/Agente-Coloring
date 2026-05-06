@@ -56,3 +56,21 @@ class ContentGateBlocked(ColorforgeAgentsError):
         self.verdict = verdict
         self.reason = reason
         super().__init__(f"Book {book_id} blocked: verdict={verdict} — {reason}")
+
+
+class ListingGenerationError(ColorforgeAgentsError):
+    """SEO Listing agent failed (Claude API or JSON parse error)."""
+
+
+class ListingGateBlocked(ColorforgeAgentsError):
+    """ListingContract blocked by Listing Gate."""
+    def __init__(self, book_id: str, failed_checks: list[str]) -> None:
+        self.book_id = book_id
+        self.failed_checks = failed_checks
+        super().__init__(
+            f"Book {book_id} listing blocked: {'; '.join(failed_checks)}"
+        )
+
+
+class PublisherAgentError(ColorforgeAgentsError):
+    """Publisher agent orchestration failure (not a KDP step failure)."""
