@@ -22,6 +22,12 @@ storageState*.json
 # Generated assets
 /var/colorforge/
 assets/
+# Track README and structure docs inside assets/, but not binary files
+!apps/agents/assets/
+!apps/agents/assets/fonts/
+!apps/agents/assets/fonts/README.md
+!apps/agents/assets/icc/
+!apps/agents/assets/icc/README.md
 *.pdf
 !docs/**/*.pdf
 

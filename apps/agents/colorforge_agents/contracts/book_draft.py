@@ -36,10 +36,21 @@ class BookDraft(BaseModel):
     spine_width_inches: float = Field(gt=0)
     total_pages: int = Field(gt=0)
     generation_metadata: GenerationMetadata
+    # M8: cover compositor and front matter fields
+    title: str = Field(default="", description="Book title — matches BookPlan target_keyword title")
+    subtitle: str | None = Field(default=None, description="Optional subtitle")
+    author: str = Field(default="", description="Author name — matches BookPlan.brand_author")
+
+    @property
+    def page_count(self) -> int:
+        """Alias for total_pages — used by CoverCompositor and FrontMatterAssembler."""
+        return self.total_pages
 
 
 BOOK_DRAFT_EXAMPLE = BookDraft(
     book_id="770e8400-e29b-41d4-a716-446655440002",
+    title="Ocean Mandala Coloring Book",
+    author="Stefano Demuru",
     manuscript_pdf_path="/var/colorforge/assets/stefano-main/770e8400/manuscript.pdf",
     cover_pdf_path="/var/colorforge/assets/stefano-main/770e8400/cover.pdf",
     pages=[

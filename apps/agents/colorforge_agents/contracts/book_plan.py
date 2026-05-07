@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from enum import StrEnum
 from typing import Literal
 
@@ -118,6 +119,12 @@ class BookPlan(BaseModel):
     paper_type: PaperType = PaperType.WHITE
     cover_finish: CoverFinish = CoverFinish.MATTE
     book_format: BookFormat = BookFormat.PAPERBACK
+    # M8: front matter and publishing metadata
+    imprint: str = "ColorForge Studio"
+    imprint_country: str = "United States"
+    publication_year: int = Field(default_factory=lambda: datetime.now().year)
+    include_dedication: bool = False
+    dedication_text: str | None = None
 
 
 BOOK_PLAN_EXAMPLE = BookPlan(
