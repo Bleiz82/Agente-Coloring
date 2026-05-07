@@ -8,57 +8,175 @@ from colorforge_agents.contracts.listing import ListingContract
 from colorforge_agents.exceptions import ListingGateBlocked
 
 # ---------------------------------------------------------------------------
-# Trademark blocklist (hardcoded for M5; M6 will add DB-backed operator editing)
+# K05: Tiered trademark blocklist (expanded from ~40 to 120+ terms)
 # ---------------------------------------------------------------------------
-_TRADEMARK_TERMS: frozenset[str] = frozenset(
-    {
-        "disney",
-        "marvel",
-        "dc comics",
-        "pokemon",
-        "pikachu",
-        "harry potter",
-        "star wars",
-        "minecraft",
-        "roblox",
-        "fortnite",
-        "peppa pig",
-        "paw patrol",
-        "bluey",
-        "cocomelon",
-        "hello kitty",
-        "barbie",
-        "batman",
-        "superman",
-        "spiderman",
-        "spider-man",
-        "frozen",
-        "moana",
-        "encanto",
-        "lilo",
-        "winnie the pooh",
-        "snoopy",
-        "garfield",
-        "looney tunes",
-        "sesame street",
-        "dora the explorer",
-        "thomas the tank",
-        "nintendo",
-        "playstation",
-        "xbox",
-        "coca-cola",
-        "adidas",
-        "nike",
-        "gucci",
-        "louis vuitton",
-        "chanel",
-        "mickey mouse",
-        "minnie mouse",
-        "stitch",
-    }
-)
 
+# TIER 1: Dealbreakers — guaranteed KDP rejection, account suspension risk
+_TIER_DEALBREAKER: frozenset[str] = frozenset({
+    "disney",
+    "pixar",
+    "marvel",
+    "star wars",
+    "pokemon",
+    "pikachu",
+    "harry potter",
+    "lego",
+    "barbie",
+    "hello kitty",
+    "peppa pig",
+    "bluey",
+    "frozen",
+    "mickey",
+    "minions",
+    "paw patrol",
+})
+
+# TIER 2: High-risk — protected franchises/characters, almost certain rejection
+_TIER_HIGH_RISK: frozenset[str] = frozenset({
+    "dc comics",
+    "batman",
+    "superman",
+    "spiderman",
+    "spider-man",
+    "iron man",
+    "wolverine",
+    "deadpool",
+    "captain america",
+    "avengers",
+    "x-men",
+    "moana",
+    "encanto",
+    "lilo",
+    "stitch",
+    "winnie the pooh",
+    "snoopy",
+    "garfield",
+    "looney tunes",
+    "sesame street",
+    "dora the explorer",
+    "thomas the tank",
+    "nintendo",
+    "mario",
+    "zelda",
+    "pokemon go",
+    "roblox",
+    "minecraft",
+    "fortnite",
+    "among us",
+    "cocomelon",
+    "minnie mouse",
+    "mickey mouse",
+    "elsa",
+    "anna frozen",
+    "olaf",
+    "tinkerbell",
+    "winx",
+    "bratz",
+    "transformers",
+    "my little pony",
+    "care bears",
+    "strawberry shortcake",
+})
+
+# TIER 3: Medium risk — terms that need brand-name context to be infringing
+_TIER_MEDIUM_RISK: frozenset[str] = frozenset({
+    "playstation",
+    "xbox",
+    "coca-cola",
+    "adidas",
+    "nike",
+    "gucci",
+    "louis vuitton",
+    "chanel",
+    "hermès",
+    "prada",
+    "versace",
+    "ferrari",
+    "lamborghini",
+    "nasa",
+    "olympic",
+    "olympics",
+    "fifa",
+    "nfl",
+    "nba",
+    "mlb",
+    "nhl",
+    "unicef",
+    "red cross",
+    "cross red",
+    "google",
+    "apple",
+    "microsoft",
+    "meta",
+    "facebook",
+    "instagram",
+    "twitter",
+    "tiktok",
+    "youtube",
+})
+
+# TIER 4: Review required — borderline terms, may be fine with proper context
+_TIER_REVIEW_REQUIRED: frozenset[str] = frozenset({
+    "anime",
+    "manga",
+    "chibi",
+    "kawaii brand",
+    "funko",
+    "bandai",
+    "hasbro",
+    "mattel",
+    "fisher-price",
+    "playmobil",
+    "nerf",
+    "polaroid",
+    "velcro",
+    "kleenex",
+    "jell-o",
+    "xerox",
+    "jacuzzi",
+    "dumpster",
+    "chapstick",
+    "realtor",
+    "frisbee",
+    "hacky sack",
+    "jet ski",
+    "ping pong",
+    "rollerblade",
+    "sharpie",
+    "photoshop",
+    "powerpoint",
+    "post-it",
+})
+
+# Public whitelist: terms that are legitimate despite matching a trademark
+# (e.g. an author whose real surname is Disney)
+_WHITELIST: frozenset[str] = frozenset()
+
+# Map tiers to severity labels for error messages
+_TIER_LABELS: dict[str, str] = {
+    "dealbreaker": "DEALBREAKER",
+    "high_risk": "HIGH_RISK",
+    "medium_risk": "MEDIUM_RISK",
+    "review_required": "REVIEW_REQUIRED",
+}
+
+# Pre-compiled word-boundary patterns for each tier (case-insensitive)
+# Word boundaries prevent false positives on substrings (e.g. "batman" in "bats_man")
+def _compile_tier(terms: frozenset[str]) -> list[tuple[str, re.Pattern[str]]]:
+    return [
+        (term, re.compile(r"\b" + re.escape(term) + r"\b", re.IGNORECASE))
+        for term in sorted(terms)
+    ]
+
+
+_COMPILED_DEALBREAKER = _compile_tier(_TIER_DEALBREAKER)
+_COMPILED_HIGH_RISK = _compile_tier(_TIER_HIGH_RISK)
+_COMPILED_MEDIUM_RISK = _compile_tier(_TIER_MEDIUM_RISK)
+_COMPILED_REVIEW_REQUIRED = _compile_tier(_TIER_REVIEW_REQUIRED)
+
+# ---------------------------------------------------------------------------
 # Bestseller / superlative claim patterns (case-insensitive)
+# ---------------------------------------------------------------------------
 _CLAIM_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"#\s*1\s+best", re.IGNORECASE),
     re.compile(r"number\s+one\s+best", re.IGNORECASE),
@@ -108,19 +226,26 @@ class ListingGate:
             "title": listing.title,
             "subtitle": listing.subtitle or "",
             "description": listing.description_html,
+            "keywords": " ".join(listing.keywords),
         }
-        keyword_text = " ".join(listing.keywords)
+        tier_data = [
+            ("dealbreaker", _COMPILED_DEALBREAKER),
+            ("high_risk", _COMPILED_HIGH_RISK),
+            ("medium_risk", _COMPILED_MEDIUM_RISK),
+            ("review_required", _COMPILED_REVIEW_REQUIRED),
+        ]
 
-        for field_name, text in fields.items():
-            lower = text.lower()
-            for term in _TRADEMARK_TERMS:
-                if term in lower:
-                    issues.append(f"trademark term '{term}' in {field_name}")
-
-        lower_kw = keyword_text.lower()
-        for term in _TRADEMARK_TERMS:
-            if term in lower_kw:
-                issues.append(f"trademark term '{term}' in keywords")
+        for tier_key, compiled in tier_data:
+            tier_label = _TIER_LABELS[tier_key]
+            for term, pattern in compiled:
+                if term in _WHITELIST:
+                    continue
+                for field_name, text in fields.items():
+                    if pattern.search(text):
+                        issues.append(
+                            f"[{tier_label}] trademark term '{term}' in {field_name}"
+                        )
+                        break  # one issue per term is enough
 
         return issues
 
