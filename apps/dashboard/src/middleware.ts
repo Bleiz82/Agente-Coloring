@@ -6,7 +6,7 @@ const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET ?? "colorforge-dev-secret-change-in-production",
 );
 
-const PUBLIC_PATHS = ["/login", "/api/health", "/api/trpc"];
+const PUBLIC_PATHS = ["/login", "/api/health", "/api/trpc", "/api/auth"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
