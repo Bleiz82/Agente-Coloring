@@ -1,0 +1,61 @@
+{
+  "niche": "mandala coloring book",
+  "total_stages": 7,
+  "passed": 7,
+  "failed": 0,
+  "total_duration_ms": 231.4,
+  "verdict": "PASS",
+  "stages": [
+    {
+      "stage": "listing_gate (K05)",
+      "status": "pass",
+      "duration_ms": 0.8,
+      "detail": "passed 0 checks"
+    },
+    {
+      "stage": "file_size_guard (K13)",
+      "status": "pass",
+      "duration_ms": 0.6,
+      "detail": "interior + cover PDFs within 650MB limit"
+    },
+    {
+      "stage": "low_content_routing (K09)",
+      "status": "pass",
+      "duration_ms": 0.0,
+      "detail": "low_content=True routes to PAPERBACK quota bucket"
+    },
+    {
+      "stage": "currency_service (K15)",
+      "status": "pass",
+      "duration_ms": 133.5,
+      "detail": "EUR=0.9300 GBP=0.7900 (from cache)"
+    },
+    {
+      "stage": "cover_compositor_geometry (K06/K07)",
+      "status": "pass",
+      "duration_ms": 6.3,
+      "detail": "canvas=1258.2\u00d7810.0pt spine=0.225in eligible=True"
+    },
+    {
+      "stage": "front_matter_text (K14)",
+      "status": "pass",
+      "duration_ms": 4.5,
+      "detail": "front_pages=3, back_pages=3, AI disclosure present, niche_cat=Adult"
+    },
+    {
+      "stage": "publisher_dry_run (K09/K13 integration)",
+      "status": "pass",
+      "duration_ms": 85.6,
+      "detail": "gates + file-size guard passed; KDP browser step skipped (dry-run)"
+    }
+  ],
+  "compliance_coverage": [
+    "K05 trademark blacklist",
+    "K06 CMYK cover geometry",
+    "K07 barcode area",
+    "K09 low-content routing",
+    "K13 file size guard",
+    "K14 front matter + AI disclosure",
+    "K15 currency service"
+  ]
+}
