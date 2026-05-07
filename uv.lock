@@ -531,6 +531,22 @@ name = "colorforge"
 version = "0.1.0"
 source = { virtual = "." }
 
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "pytest-cov" },
+]
+
+[package.metadata]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=9.0.3" },
+    { name = "pytest-asyncio", specifier = ">=1.3.0" },
+    { name = "pytest-cov", specifier = ">=7.1.0" },
+]
+
 [[package]]
 name = "colorforge-agents"
 version = "0.1.0"
