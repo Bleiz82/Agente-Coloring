@@ -74,3 +74,8 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [tool.uv.sources]
 colorforge-kdp-client = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "bandit>=1.9.4",
+]
