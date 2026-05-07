@@ -1,7 +1,7 @@
 [project]
 name = "colorforge-agents"
 version = "0.1.0"
-description = "ColorForge AI agent system — Niche Hunter, Deep Scout, and more"
+description = "ColorForge AI agent system -- Niche Hunter, Deep Scout, and more"
 requires-python = ">=3.12"
 dependencies = [
     "crewai>=0.80.0",

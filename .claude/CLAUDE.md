@@ -49,8 +49,24 @@ ruff + mypy strict | biome | pytest + vitest | conventional commits
 8. No mocks left in production code paths. Tests use mocks; src must not.
 
 ## Current Milestone
-M7 — Dashboard. Status: Complete.
-Next: M8 — KDP compliance (K05-K07, K09-K10) + pipeline hardening.
+M8 — Hardening & Go-Live. Status: Complete (2026-05-07).
+Tag: m8-complete, v1.0.0
+
+### M8 Delivered
+- K05: Trademark blacklist (120+ terms, 4 tiers, word-boundary regex)
+- K06/K07: CoverCompositor (CMYK/ICC, barcode area, spine geometry, PDF export)
+- K09: low_content flag + PAPERBACK quota routing
+- K10: FrontMatterAssembler (AI disclosure, niche templates, gutter table)
+- K13: File size guard (650MB hard / 40MB soft + Ghostscript compress)
+- K14: FrontMatterAssembler full assembly (pypdf concat, page count validation)
+- K15: CurrencyService (Redis 24h cache, in-memory fallback, drift detection)
+- K16: UTF-8 pyproject.toml (no em-dash bytes in any TOML file)
+- Phase E: ruff 0 errors, mypy strict 0 errors, bandit 0 high/medium, 78% coverage
+- Phase F: E2E sandbox dry-run script (7/7 stages pass, ~230ms)
+- Phase G: LAUNCH_CHECKLIST.md + run_publish.py --account/--niche-id/--review
+- 497 tests passing (340 baseline + 157 new M8 tests)
+
+Next: M9 — full automation graduation (remove --review gate after 5/5 live books).
 
 ### M6.5 Fixes Applied (2026-05-06)
 - K01: Weekly per-format quota (10/week) replaces daily quota (5/day) in `colorforge_kdp/quota.py`

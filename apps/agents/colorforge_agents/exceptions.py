@@ -97,3 +97,19 @@ class InsufficientSalesData(ColorforgeAgentsError):
 
 class PerformanceMonitorError(ColorforgeAgentsError):
     """Performance Monitor orchestration failure."""
+
+
+class CoverComplianceError(ColorforgeAgentsError):
+    """KDP cover compliance check failed — see CoverValidationReport for details."""
+
+
+class FrontMatterError(ColorforgeAgentsError):
+    """Front matter assembly failed (page count, missing disclosure, etc.)."""
+
+
+class FileSizeError(ColorforgeAgentsError):
+    """Interior PDF exceeds KDP file size limits."""
+
+
+class CurrencyServiceError(ColorforgeAgentsError):
+    """Currency rate fetch or cache operation failed."""

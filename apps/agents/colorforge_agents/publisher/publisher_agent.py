@@ -13,7 +13,7 @@ from colorforge_agents.contracts.book_draft import BookDraft
 from colorforge_agents.contracts.book_plan import BookFormat
 from colorforge_agents.contracts.listing import ListingContract
 from colorforge_agents.contracts.validation_report import ValidationReport
-from colorforge_agents.exceptions import PublisherAgentError
+from colorforge_agents.exceptions import FileSizeError, PublisherAgentError
 from colorforge_agents.gates.content_gate import ContentGate
 from colorforge_agents.gates.listing_gate import ListingGate
 
@@ -57,10 +57,19 @@ class PublisherAgent:
         # 2. Listing compliance gate
         self._listing_gate.passes(listing)  # raises ListingGateBlocked if not
 
-        # 3. Weekly per-format quota check
+        # 3. K13: File size guard — interior + cover PDFs
+        self._check_file_sizes(draft)
+
+        # 4. K09: low-content flag routes to separate quota bucket
+        effective_format = book_format
+        if listing.low_content:
+            logger.info("book={} flagged as low-content — using low_content quota bucket", book_id)
+            effective_format = BookFormat.PAPERBACK  # low-content always paperback on KDP
+
+        # 5. Weekly per-format quota check
         try:
             from colorforge_kdp.quota import check_and_consume_quota
-            await check_and_consume_quota(account, self._prisma, book_format.value)
+            await check_and_consume_quota(account, self._prisma, effective_format.value)
         except ImportError as exc:
             raise PublisherAgentError("colorforge_kdp not installed") from exc
 
@@ -94,6 +103,88 @@ class PublisherAgent:
 
         logger.info("book={} published successfully asin={}", book_id, asin or "unknown")
         return PublisherResult(book_id=book_id, asin=asin, account_id=account.id)
+
+    # ------------------------------------------------------------------
+    # K13: File size guard
+    # ------------------------------------------------------------------
+
+    _MAX_BYTES: int = 650 * 1024 * 1024   # 650 MB hard limit
+    _WARN_BYTES: int = 40 * 1024 * 1024   # 40 MB recommended limit
+
+    def _check_file_sizes(self, draft: BookDraft) -> None:
+        """Reject >650 MB PDFs; warn and attempt Ghostscript compress for 40-650 MB.
+
+        Raises:
+            FileSizeError: if interior or cover PDF exceeds 650 MB after compression.
+        """
+        for label, path_str in (
+            ("interior", draft.manuscript_pdf_path),
+            ("cover", draft.cover_pdf_path),
+        ):
+            pdf_path = Path(path_str)
+            if not pdf_path.exists():
+                logger.warning(
+                    "book={} {} PDF not found for size check: {}", draft.book_id, label, path_str
+                )
+                continue
+
+            size = pdf_path.stat().st_size
+
+            if size > self._MAX_BYTES:
+                raise FileSizeError(
+                    f"{label} PDF {size // (1024*1024)}MB exceeds KDP hard limit 650MB"
+                )
+
+            if size > self._WARN_BYTES:
+                logger.warning(
+                    "book={} {} PDF {}MB exceeds 40MB -- attempting Ghostscript compress",
+                    draft.book_id, label, size // (1024*1024),
+                )
+                compressed = self._ghostscript_compress(pdf_path)
+                if compressed is not None:
+                    new_size = compressed.stat().st_size
+                    logger.info(
+                        "book={} {} compressed: {}MB -> {}MB",
+                        draft.book_id, label, size // (1024*1024), new_size // (1024*1024),
+                    )
+                    if new_size > self._MAX_BYTES:
+                        raise FileSizeError(
+                            f"{label} PDF still {new_size // (1024*1024)}MB after compression"
+                            " -- manual review required"
+                        )
+                else:
+                    logger.warning(
+                        "book={} Ghostscript unavailable -- proceeding with large {} PDF",
+                        draft.book_id, label,
+                    )
+
+    @staticmethod
+    def _ghostscript_compress(pdf_path: Path) -> Path | None:
+        """Compress PDF via Ghostscript. Returns compressed path or None if unavailable."""
+        import shutil
+        import subprocess
+
+        gs = shutil.which("gs") or shutil.which("gswin64c") or shutil.which("gswin32c")
+        if not gs:
+            return None
+
+        out_path = pdf_path.with_suffix(".compressed.pdf")
+        try:
+            subprocess.run(
+                [
+                    gs, "-sDEVICE=pdfwrite", "-dCompatibilityLevel=1.4",
+                    "-dPDFSETTINGS=/ebook", "-dNOPAUSE", "-dQUIET", "-dBATCH",
+                    f"-sOutputFile={out_path}", str(pdf_path),
+                ],
+                check=True, timeout=120,
+            )
+            if out_path.exists() and out_path.stat().st_size < pdf_path.stat().st_size:
+                pdf_path.replace(pdf_path.with_suffix(".original.pdf"))
+                out_path.rename(pdf_path)
+                return pdf_path
+        except Exception as exc:
+            logger.warning("Ghostscript compression failed: {}", exc)
+        return None
 
     # ------------------------------------------------------------------
     # Mapping helpers

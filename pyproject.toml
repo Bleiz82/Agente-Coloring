@@ -1,7 +1,7 @@
 [project]
 name = "colorforge"
 version = "0.1.0"
-description = "ColorForge AI — KDP coloring book automation system"
+description = "ColorForge AI -- KDP coloring book automation system"
 requires-python = ">=3.12"
 
 [tool.uv.workspace]

@@ -22,6 +22,9 @@ class ListingContract(BaseModel):
     price_gbp: float | None = Field(default=None, gt=0)
     ai_disclosure: Literal[True] = True
     publication_target_date: datetime | None = None
+    # K09: KDP treats low-content books (journals, notebooks, planners) differently —
+    # separate quota bucket and different content guidelines
+    low_content: bool = False
 
 
 LISTING_EXAMPLE = ListingContract(
