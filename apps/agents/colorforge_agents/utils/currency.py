@@ -10,6 +10,7 @@ Features:
 
 from __future__ import annotations
 
+import contextlib
 import json
 import time
 from typing import Final
@@ -60,8 +61,10 @@ class CurrencyService:
     def _init_redis(self, redis_url: str) -> None:
         try:
             import redis as redis_lib
-            self._redis = redis_lib.Redis.from_url(redis_url, socket_timeout=2, socket_connect_timeout=2)
-            self._redis.ping()  # type: ignore[union-attr]
+            self._redis = redis_lib.Redis.from_url(
+                redis_url, socket_timeout=2, socket_connect_timeout=2
+            )
+            self._redis.ping()
             self._redis_available = True
             logger.debug("CurrencyService: Redis connected at {}", redis_url)
         except Exception as exc:
@@ -96,7 +99,9 @@ class CurrencyService:
         rates = await self._fetch_rates()
         if currency not in rates:
             if currency in _FALLBACK_RATES:
-                logger.warning("CurrencyService: {} not in API response, using hardcoded fallback", currency)
+                logger.warning(
+                    "CurrencyService: {} not in API response, using hardcoded fallback", currency
+                )
                 return _FALLBACK_RATES[currency]
             raise CurrencyServiceError(f"Unknown currency: {currency!r}")
 
@@ -113,10 +118,8 @@ class CurrencyService:
         """Force next get_rate() to re-fetch from API."""
         self._memory_cache.clear()
         if self._redis_available and self._redis is not None:
-            try:
-                self._redis.delete(_REDIS_KEY)  # type: ignore[union-attr]
-            except Exception:
-                pass
+            with contextlib.suppress(Exception):
+                self._redis.delete(_REDIS_KEY)  # type: ignore[attr-defined]
 
     # ------------------------------------------------------------------
     # Private: cache
@@ -127,7 +130,7 @@ class CurrencyService:
 
         if self._redis_available and self._redis is not None:
             try:
-                raw = self._redis.get(_REDIS_KEY)  # type: ignore[union-attr]
+                raw = self._redis.get(_REDIS_KEY)  # type: ignore[attr-defined]
                 if raw:
                     data = json.loads(raw)
                     fetched_at = data.get("fetched_at", 0)
@@ -151,7 +154,7 @@ class CurrencyService:
 
         if self._redis_available and self._redis is not None:
             try:
-                self._redis.setex(_REDIS_KEY, _CACHE_TTL_SECONDS, payload)  # type: ignore[union-attr]
+                self._redis.setex(_REDIS_KEY, _CACHE_TTL_SECONDS, payload)  # type: ignore[attr-defined]
             except Exception as exc:
                 logger.debug("CurrencyService: Redis write failed: {}", exc)
 

@@ -8,16 +8,20 @@ Source of truth: .claude/skills/kdp-cover-compositor.md
 
 from __future__ import annotations
 
+import contextlib
 import re
 from enum import StrEnum
 from pathlib import Path
-from typing import Final, Literal
+from typing import TYPE_CHECKING, Final, Literal
 
 from pydantic import BaseModel, ConfigDict
 
 from colorforge_agents.contracts.book_draft import BookDraft
 from colorforge_agents.contracts.book_plan import BookPlan
 from colorforge_agents.exceptions import CoverComplianceError
+
+if TYPE_CHECKING:
+    from PIL.Image import Image
 
 # ---------------------------------------------------------------------------
 # Asset paths
@@ -176,9 +180,9 @@ class CoverComplianceValidator:
 
     @staticmethod
     def validate_canvas(
-        canvas_rgb: "Image",  # type: ignore[name-defined]
+        canvas_rgb: Image,
         geometry: CoverGeometry,
-        text_bboxes: list[tuple[int, int, int, int]],
+        text_bboxes: list[tuple[float, float, float, float]],
         spine_text_included: bool,
         page_count: int,
         source_dpi: tuple[float, float],
@@ -224,7 +228,7 @@ class CoverComplianceValidator:
         bw = int(geometry.barcode_w_pt / _PT_PER_IN * _RENDER_DPI)
         bh = int(geometry.barcode_h_pt / _PT_PER_IN * _RENDER_DPI)
         barcode_region = canvas_rgb.crop((bx, actual_h - by - bh, bx + bw, actual_h - by))
-        pixels = list(barcode_region.getdata())  # type: ignore[attr-defined]
+        pixels = list(barcode_region.getdata())
         if pixels:
             white_count = sum(
                 1 for p in pixels
@@ -589,7 +593,7 @@ class CoverCompositor:
         geom: CoverGeometry,
         font_cat: str,
         spine_eligible: bool,
-    ) -> tuple["Image", list[tuple[int, int, int, int]], tuple[float, float]]:  # type: ignore[name-defined]
+    ) -> tuple[Image, list[tuple[float, float, float, float]], tuple[float, float]]:
         from PIL import Image, ImageDraw, ImageFont
 
         canvas_w_px = int(geom.cover_width_in * _RENDER_DPI)
@@ -599,9 +603,10 @@ class CoverCompositor:
         # --- paste front image ---
         with Image.open(self.front_image_path) as front_src:
             src_dpi_raw = front_src.info.get("dpi", (0, 0))
+            is_tuple = isinstance(src_dpi_raw, tuple)
             source_dpi: tuple[float, float] = (
-                float(src_dpi_raw[0]) if isinstance(src_dpi_raw, tuple) and len(src_dpi_raw) >= 1 else 0.0,
-                float(src_dpi_raw[1]) if isinstance(src_dpi_raw, tuple) and len(src_dpi_raw) >= 2 else 0.0,
+                float(src_dpi_raw[0]) if is_tuple and len(src_dpi_raw) >= 1 else 0.0,
+                float(src_dpi_raw[1]) if is_tuple and len(src_dpi_raw) >= 2 else 0.0,
             )
 
             front_x_px = int(geom.front_left_pt / _PT_PER_IN * _RENDER_DPI)
@@ -609,9 +614,7 @@ class CoverCompositor:
             front_h_px = canvas_h_px
             front_resized = front_src.resize(
                 (front_w_px, front_h_px),
-                getattr(
-                    getattr(Image, "Resampling", Image), "LANCZOS"
-                ),
+                getattr(Image, "Resampling", Image).LANCZOS,
             )
             canvas.paste(front_resized, (front_x_px, 0))
 
@@ -645,11 +648,16 @@ class CoverCompositor:
         author_px = int(author_pt / _PT_PER_IN * _RENDER_DPI)
         blurb_px = int(11 / _PT_PER_IN * _RENDER_DPI)
 
+        font_title: ImageFont.FreeTypeFont | ImageFont.ImageFont
+        font_subtitle: ImageFont.FreeTypeFont | ImageFont.ImageFont
+        font_author: ImageFont.FreeTypeFont | ImageFont.ImageFont
+        font_blurb: ImageFont.FreeTypeFont | ImageFont.ImageFont
         if title_font_path.exists():
+            body_str = str(body_font_path) if body_font_path.exists() else str(title_font_path)
             font_title = ImageFont.truetype(str(title_font_path), title_px)
             font_subtitle = ImageFont.truetype(str(title_font_path), subtitle_px)
-            font_author = ImageFont.truetype(str(body_font_path) if body_font_path.exists() else str(title_font_path), author_px)
-            font_blurb = ImageFont.truetype(str(body_font_path) if body_font_path.exists() else str(title_font_path), blurb_px)
+            font_author = ImageFont.truetype(body_str, author_px)
+            font_blurb = ImageFont.truetype(body_str, blurb_px)
         else:
             font_title = ImageFont.load_default()
             font_subtitle = font_title
@@ -657,7 +665,7 @@ class CoverCompositor:
             font_blurb = font_title
 
         draw = ImageDraw.Draw(canvas)
-        text_bboxes: list[tuple[int, int, int, int]] = []
+        text_bboxes: list[tuple[float, float, float, float]] = []
 
         # --- front: title, subtitle, author ---
         safe_px = int(_SAFE_ZONE_IN * _RENDER_DPI)
@@ -672,19 +680,35 @@ class CoverCompositor:
         title_text = self.draft.title or self.plan.target_keyword
         title_y = front_safe_top + int(0.10 * (front_safe_bottom - front_safe_top))
         bbox = draw.textbbox((front_center_x, title_y), title_text, font=font_title, anchor="mt")
-        draw.text((front_center_x, title_y), title_text, font=font_title, fill=(255, 255, 255), anchor="mt")
+        draw.text(
+            (front_center_x, title_y), title_text,
+            font=font_title, fill=(255, 255, 255), anchor="mt",
+        )
         text_bboxes.append(bbox)
 
         if self.draft.subtitle:
             sub_y = bbox[3] + subtitle_px // 2
-            sub_bbox = draw.textbbox((front_center_x, sub_y), self.draft.subtitle, font=font_subtitle, anchor="mt")
-            draw.text((front_center_x, sub_y), self.draft.subtitle, font=font_subtitle, fill=(220, 220, 220), anchor="mt")
+            sub_bbox = draw.textbbox(
+                (front_center_x, sub_y), self.draft.subtitle, font=font_subtitle, anchor="mt"
+            )
+            draw.text(
+                (front_center_x, sub_y),
+                self.draft.subtitle,
+                font=font_subtitle,
+                fill=(220, 220, 220),
+                anchor="mt",
+            )
             text_bboxes.append(sub_bbox)
 
         author_text = self.draft.author or self.plan.brand_author
         author_y = front_safe_bottom - author_px - safe_px
-        auth_bbox = draw.textbbox((front_center_x, author_y), author_text, font=font_author, anchor="mt")
-        draw.text((front_center_x, author_y), author_text, font=font_author, fill=(200, 200, 200), anchor="mt")
+        auth_bbox = draw.textbbox(
+            (front_center_x, author_y), author_text, font=font_author, anchor="mt"
+        )
+        draw.text(
+            (front_center_x, author_y), author_text,
+            font=font_author, fill=(200, 200, 200), anchor="mt",
+        )
         text_bboxes.append(auth_bbox)
 
         # --- back: blurb placeholder ---
@@ -692,8 +716,13 @@ class CoverCompositor:
         back_safe_top = bleed_px + safe_px
         blurb_text = self.plan.style_fingerprint[:80] if self.plan.style_fingerprint else ""
         if blurb_text:
-            bl_bbox = draw.textbbox((back_center_x, back_safe_top), blurb_text, font=font_blurb, anchor="mt")
-            draw.text((back_center_x, back_safe_top), blurb_text, font=font_blurb, fill=(240, 240, 240), anchor="mt")
+            bl_bbox = draw.textbbox(
+                (back_center_x, back_safe_top), blurb_text, font=font_blurb, anchor="mt"
+            )
+            draw.text(
+                (back_center_x, back_safe_top), blurb_text,
+                font=font_blurb, fill=(240, 240, 240), anchor="mt",
+            )
             text_bboxes.append(bl_bbox)
 
         # --- barcode area: white rectangle ---
@@ -708,6 +737,7 @@ class CoverCompositor:
         if spine_eligible and spine_w_px > int(2 * _SPINE_SAFE_ZONE_IN * _RENDER_DPI):
             spine_font_path = _FONTS_DIR / font_files["title"]
             spine_pt_size = max(12, min(24, spine_w_px - int(4.5 / _PT_PER_IN * _RENDER_DPI)))
+            font_spine: ImageFont.FreeTypeFont | ImageFont.ImageFont
             if spine_font_path.exists():
                 font_spine = ImageFont.truetype(str(spine_font_path), spine_pt_size)
             else:
@@ -731,7 +761,7 @@ class CoverCompositor:
 
     @staticmethod
     def _sample_dominant_color(
-        canvas: "Image",  # type: ignore[name-defined]
+        canvas: Image,
         sample_w: int,
         sample_h: int,
     ) -> tuple[int, int, int]:
@@ -751,7 +781,7 @@ class CoverCompositor:
     # Private: CMYK conversion
     # ------------------------------------------------------------------
 
-    def _convert_to_cmyk(self, rgb_image: "Image") -> "Image":  # type: ignore[name-defined]
+    def _convert_to_cmyk(self, rgb_image: Image) -> Image:
         from PIL import ImageCms
 
         src_profile = ImageCms.createProfile("sRGB")
@@ -759,7 +789,9 @@ class CoverCompositor:
         transform = ImageCms.buildTransformFromOpenProfiles(
             src_profile, dst_profile, "RGB", "CMYK"
         )
-        return ImageCms.applyTransform(rgb_image, transform)
+        result = ImageCms.applyTransform(rgb_image, transform)
+        assert result is not None
+        return result
 
     # ------------------------------------------------------------------
     # Private: PDF export
@@ -767,28 +799,25 @@ class CoverCompositor:
 
     def _export_pdf(
         self,
-        cmyk_image: "Image",  # type: ignore[name-defined]
+        cmyk_image: Image,
         geom: CoverGeometry,
         pdf_path: Path,
     ) -> None:
         """Export CMYK image as PDF/X-1a with embedded fonts via ReportLab."""
         from io import BytesIO
 
-        from reportlab.lib.units import inch
         from reportlab.pdfbase import pdfmetrics
         from reportlab.pdfbase.ttfonts import TTFont
         from reportlab.pdfgen import canvas as rl_canvas
 
         # Register fonts (best-effort — may not be present in test envs)
         for cat_fonts in _FONT_FILES.values():
-            for font_key, font_file in cat_fonts.items():
+            for font_file in cat_fonts.values():
                 font_path = _FONTS_DIR / font_file
                 if font_path.exists():
                     font_name = font_file.replace(".ttf", "").replace("-", "_")
-                    try:
+                    with contextlib.suppress(Exception):
                         pdfmetrics.registerFont(TTFont(font_name, str(font_path)))
-                    except Exception:
-                        pass
 
         cover_w_pt = geom.cover_width_pt
         cover_h_pt = geom.cover_height_pt

@@ -9,16 +9,19 @@ Source of truth: .claude/skills/kdp-frontmatter.md
 
 from __future__ import annotations
 
+import contextlib
 import re
-from datetime import datetime
 from pathlib import Path
-from typing import Final, Literal
+from typing import TYPE_CHECKING, Final
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from colorforge_agents.contracts.book_draft import BookDraft
 from colorforge_agents.contracts.book_plan import BookPlan
-from colorforge_agents.exceptions import FrontMatterError, PDFAssemblyError
+from colorforge_agents.exceptions import FrontMatterError
+
+if TYPE_CHECKING:
+    from reportlab.pdfgen.canvas import Canvas
 
 # ---------------------------------------------------------------------------
 # Asset paths
@@ -258,7 +261,7 @@ class FrontMatterAssembler:
         """Build all back matter text blocks."""
         thank_you = self._build_thank_you_page()
         about_author = self._build_about_author_page()
-        also_by = self._build_also_by_page(other_titles) if other_titles and len(other_titles) >= 1 else None
+        also_by = self._build_also_by_page(other_titles) if other_titles else None
 
         for field, text in [
             ("thank_you_page", thank_you),
@@ -503,10 +506,8 @@ class FrontMatterAssembler:
         for font_name, font_file in font_map.items():
             font_path = _FONTS_DIR / font_file
             if font_path.exists():
-                try:
+                with contextlib.suppress(Exception):
                     pdfmetrics.registerFont(TTFont(font_name, str(font_path)))
-                except Exception:
-                    pass
 
     def _render_front_matter_pdf(
         self,
@@ -525,21 +526,25 @@ class FrontMatterAssembler:
         top_margin = (_BLEED_IN + 0.5) * inch
         text_width = page_w - 2 * margin
 
+        args = (page_w, page_h, margin, top_margin, text_width)
+
         # Title page
-        self._render_text_page(c, content.title_page_text, page_w, page_h, margin, top_margin, text_width, center=True)
+        self._render_text_page(c, content.title_page_text, *args, center=True)
         c.showPage()
 
         # Copyright page
-        self._render_text_page(c, content.copyright_page_text, page_w, page_h, margin, top_margin, text_width, center=False, font_size=9)
+        self._render_text_page(c, content.copyright_page_text, *args, center=False, font_size=9)
         c.showPage()
 
         # Dedication (optional)
         if content.dedication_page_text:
-            self._render_text_page(c, content.dedication_page_text, page_w, page_h, margin, top_margin, text_width, center=True, font_size=14)
+            self._render_text_page(
+                c, content.dedication_page_text, *args, center=True, font_size=14
+            )
             c.showPage()
 
         # How-to-use
-        self._render_text_page(c, content.how_to_use_page_text, page_w, page_h, margin, top_margin, text_width, center=False, font_size=11)
+        self._render_text_page(c, content.how_to_use_page_text, *args, center=False, font_size=11)
         c.showPage()
 
         c.save()
@@ -560,25 +565,26 @@ class FrontMatterAssembler:
         margin = gutter_in * inch
         top_margin = (_BLEED_IN + 0.5) * inch
         text_width = page_w - 2 * margin
+        args = (page_w, page_h, margin, top_margin, text_width)
 
         # Thank-you
-        self._render_text_page(c, content.thank_you_page_text, page_w, page_h, margin, top_margin, text_width, center=True, font_size=14)
+        self._render_text_page(c, content.thank_you_page_text, *args, center=True, font_size=14)
         c.showPage()
 
         # About author
-        self._render_text_page(c, content.about_author_page_text, page_w, page_h, margin, top_margin, text_width, center=False, font_size=11)
+        self._render_text_page(c, content.about_author_page_text, *args, center=False, font_size=11)
         c.showPage()
 
         # Also-by (optional)
         if content.also_by_page_text:
-            self._render_text_page(c, content.also_by_page_text, page_w, page_h, margin, top_margin, text_width, center=False, font_size=12)
+            self._render_text_page(c, content.also_by_page_text, *args, center=False, font_size=12)
             c.showPage()
 
         c.save()
 
     @staticmethod
     def _render_text_page(
-        c: "Canvas",  # type: ignore[name-defined]
+        c: Canvas,
         text: str,
         page_w: float,
         page_h: float,
@@ -588,8 +594,6 @@ class FrontMatterAssembler:
         center: bool = False,
         font_size: int = 11,
     ) -> None:
-        from reportlab.lib.units import inch
-
         c.setFont("Helvetica", font_size)
         y = page_h - top_margin
         line_height = font_size * 1.4

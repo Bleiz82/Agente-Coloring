@@ -123,7 +123,9 @@ class PublisherAgent:
         ):
             pdf_path = Path(path_str)
             if not pdf_path.exists():
-                logger.warning("book={} {} PDF not found for size check: {}", draft.book_id, label, path_str)
+                logger.warning(
+                    "book={} {} PDF not found for size check: {}", draft.book_id, label, path_str
+                )
                 continue
 
             size = pdf_path.stat().st_size
@@ -135,7 +137,7 @@ class PublisherAgent:
 
             if size > self._WARN_BYTES:
                 logger.warning(
-                    "book={} {} PDF {}MB exceeds recommended 40MB — attempting Ghostscript compress",
+                    "book={} {} PDF {}MB exceeds 40MB -- attempting Ghostscript compress",
                     draft.book_id, label, size // (1024*1024),
                 )
                 compressed = self._ghostscript_compress(pdf_path)
@@ -147,14 +149,18 @@ class PublisherAgent:
                     )
                     if new_size > self._MAX_BYTES:
                         raise FileSizeError(
-                            f"{label} PDF still {new_size // (1024*1024)}MB after compression — manual review required"
+                            f"{label} PDF still {new_size // (1024*1024)}MB after compression"
+                            " -- manual review required"
                         )
                 else:
-                    logger.warning("book={} Ghostscript unavailable — proceeding with large {} PDF", draft.book_id, label)
+                    logger.warning(
+                        "book={} Ghostscript unavailable -- proceeding with large {} PDF",
+                        draft.book_id, label,
+                    )
 
     @staticmethod
     def _ghostscript_compress(pdf_path: Path) -> Path | None:
-        """Compress PDF via Ghostscript subprocess. Returns compressed path or None if unavailable."""
+        """Compress PDF via Ghostscript. Returns compressed path or None if unavailable."""
         import shutil
         import subprocess
 
