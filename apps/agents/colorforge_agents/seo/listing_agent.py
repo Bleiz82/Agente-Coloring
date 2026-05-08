@@ -12,9 +12,8 @@ from colorforge_agents.contracts.book_draft import BookDraft
 from colorforge_agents.contracts.book_plan import BookPlan
 from colorforge_agents.contracts.listing import ListingContract
 from colorforge_agents.contracts.niche_brief import NicheBrief
+from colorforge_agents.config.models import LISTING_AGENT_MODEL
 from colorforge_agents.exceptions import ListingGenerationError
-
-_MODEL = "claude-sonnet-4-6"
 
 _SYSTEM = (
     "You are a KDP coloring book SEO specialist with deep knowledge of Amazon search "
@@ -76,7 +75,7 @@ class SEOListingCore:
     async def _call_claude(self, prompt: str) -> str:
         try:
             response = await self._client.messages.create(
-                model=_MODEL,
+                model=LISTING_AGENT_MODEL,
                 max_tokens=1024,
                 system=_SYSTEM,
                 messages=[{"role": "user", "content": prompt}],

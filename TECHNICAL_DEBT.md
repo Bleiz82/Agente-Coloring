@@ -50,3 +50,11 @@ Last updated: 2026-05-07 (M8 close)
 - Do NOT mock the DB in publisher integration tests (K-incident 2026-04)
 - Do NOT use `asyncio.get_event_loop()` in new code (use `asyncio.run()`)
 - Do NOT commit storageState files or generated PDFs
+
+## K17 — Cost optimization (May 2026)
+
+Centralized Claude model registry introduced in apps/agents/colorforge_agents/config/models.py.
+Critic, vision_checker, listing_agent, policy_proposer switched from Sonnet to Haiku 4.5.
+deep_scout/llm_analyzer keeps Sonnet for strategic niche reasoning.
+Estimated savings: ~70% on Claude costs per book (from ~1.20€ to ~0.40€ on text generation).
+Status: RESOLVED.

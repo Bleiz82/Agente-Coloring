@@ -14,9 +14,8 @@ from colorforge_agents.contracts.validation_report import (
     PageFlag,
     ValidationReport,
 )
+from colorforge_agents.config.models import CRITIC_MODEL
 from colorforge_agents.critic.vision_checker import VisionChecker
-
-_CRITIC_MODEL_VERSION = "claude-sonnet-4-6"
 
 
 class CriticCore:
@@ -59,7 +58,7 @@ class CriticCore:
             pdf_spec_compliance=pdf_compliant,
             pdf_spec_details=pdf_issues,
             recommended_action=recommended_action,
-            critic_model_version=_CRITIC_MODEL_VERSION,
+            critic_model_version=CRITIC_MODEL,
         )
 
         await self._persist(report)

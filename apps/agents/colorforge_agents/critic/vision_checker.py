@@ -11,9 +11,8 @@ from typing import Any
 from loguru import logger
 
 from colorforge_agents.contracts.validation_report import CoverAssessment, PageFlag
+from colorforge_agents.config.models import VISION_CHECKER_MODEL
 from colorforge_agents.exceptions import CriticError
-
-_MODEL = "claude-sonnet-4-6"
 _BATCH_SIZE = 5  # pages per Claude call
 
 _PAGE_SYSTEM = (
@@ -64,7 +63,7 @@ class VisionChecker:
 
         try:
             response = await self._client.messages.create(
-                model=_MODEL,
+                model=VISION_CHECKER_MODEL,
                 max_tokens=512,
                 system=_COVER_SYSTEM,
                 messages=[
@@ -160,7 +159,7 @@ class VisionChecker:
 
         try:
             response = await self._client.messages.create(
-                model=_MODEL,
+                model=VISION_CHECKER_MODEL,
                 max_tokens=1024,
                 system=_PAGE_SYSTEM,
                 messages=[{"role": "user", "content": content}],

@@ -14,6 +14,7 @@ from colorforge_agents.contracts.niche_brief import (
     PainPoint,
     StyleClassification,
 )
+from colorforge_agents.config.models import NICHE_ANALYZER_MODEL
 from colorforge_agents.exceptions import LLMAnalysisError
 
 _PAIN_POINT_SYSTEM = """
@@ -51,7 +52,7 @@ Return only valid JSON, no commentary.
 class LLMAnalyzer:
     """Wraps Claude Sonnet 4.6 for structured extraction tasks."""
 
-    _MODEL = "claude-sonnet-4-6"
+    _MODEL = NICHE_ANALYZER_MODEL
 
     def __init__(self, client: Any) -> None:  # anthropic.AsyncAnthropic
         self._client = client

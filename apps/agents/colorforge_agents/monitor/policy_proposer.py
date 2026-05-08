@@ -10,6 +10,7 @@ from typing import Any
 from loguru import logger
 
 from colorforge_agents.contracts import ProposedPolicy
+from colorforge_agents.config.models import POLICY_PROPOSER_MODEL
 from colorforge_agents.monitor.analyzer import DifferentialReport
 
 
@@ -66,7 +67,7 @@ class PolicyProposer:
 
     async def _call_claude(self, prompt: str) -> list[dict[str, Any]]:
         response = await self._client.messages.create(
-            model="claude-sonnet-4-6",
+            model=POLICY_PROPOSER_MODEL,
             max_tokens=2048,
             messages=[{"role": "user", "content": prompt}],
         )
